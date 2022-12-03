@@ -16,14 +16,30 @@ def get_embedding(input_string, tokenizer, model):
         return last_hidden_states.tolist()
 
 
-# Gets all encodings given an input csv
+# Gets all encodings given an input csv (for final_master_dataset.csv)
+# def get_all_embeddings(input_csv, tokenizer, model):
+#     result = {}     # Dictionary where key = question and value = bert embedding for that question
+
+#     reader = read_csv(input_csv, True)
+
+#     for row in reader:
+#         question = row[2]
+#         embedding = get_embedding(question, tokenizer, model)
+#         question = ''.join([i if ord(i) < 128 else ' ' for i in question])
+
+#         result[question] = embedding
+
+#     return result
+
+
+# Gets all encodings given an input csv (for train4.csv)
 def get_all_embeddings(input_csv, tokenizer, model):
     result = {}     # Dictionary where key = question and value = bert embedding for that question
 
-    reader = read_csv(input_csv, True)
+    reader = read_csv(input_csv, False)
 
     for row in reader:
-        question = row[2]
+        question = row[0]
         embedding = get_embedding(question, tokenizer, model)
         question = ''.join([i if ord(i) < 128 else ' ' for i in question])
 
@@ -52,13 +68,19 @@ def combine_with_augmented_dataset(original_pickle_path, new_pickle_path, augmen
 model_class = BertModel
 tokenizer_class = BertTokenizer
 pretrained_weights = 'bert-base-uncased'
-input_csv = 'data/final_master_dataset.csv'
+# input_csv = 'data/final_master_dataset.csv'
+input_csv = '../dataset_classes/split_4/train4.csv'
 
 # Load pretrained model/tokenizer
 tokenizer = tokenizer_class.from_pretrained(pretrained_weights)
 model = model_class.from_pretrained(pretrained_weights)
 
-# all_embeddings = get_all_embeddings(input_csv, tokenizer, model)
-# save_to_pickle(all_embeddings, 'question_embeddings_max.pickle')
+# Add vocabulary
+new_tokens = ['covid']
+num_added_toks = tokenizer.add_tokens(new_tokens)
+model.resize_token_embeddings(len(tokenizer))
 
-combine_with_augmented_dataset('dataset_categories/question_embeddings_pooled.pickle', 'augmented_question_embeddings.pickle', 'dataset_categories/train20_augmented.csv', tokenizer, model)
+all_embeddings = get_all_embeddings(input_csv, tokenizer, model)
+save_to_pickle(all_embeddings, 'question_embeddings_pooled_train4.pickle')
+
+# combine_with_augmented_dataset('dataset_categories/question_embeddings_pooled.pickle', 'augmented_question_embeddings.pickle', 'dataset_categories/train20_augmented.csv', tokenizer, model)
