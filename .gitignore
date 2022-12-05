@@ -1,1 +1,6 @@
 *.ipynb
+*.pickle
+__pycache__/
+data/
+model/
+SentEval/
