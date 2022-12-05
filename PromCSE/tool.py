@@ -1,9 +1,8 @@
-
 import logging
 import argparse
 import torch
 from transformers import AutoConfig, AutoTokenizer
-from PromCSE.promcse.models import BertForCL, RobertaForCL
+from promcse.models import BertForCL, RobertaForCL
 from tqdm import tqdm
 from numpy import ndarray
 from typing import List, Dict, Tuple, Type, Union
@@ -261,7 +260,6 @@ class PromCSE(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name_or_path", type=str, 
-            default='PromCSE/model/my-unsup-promcse-bert-base-uncased', # 추가
             help="Transformers' model name or path")
     parser.add_argument("--pooler_type", type=str, 
             choices=['cls', 'cls_before_pooler', 'avg', 'avg_top2', 'avg_first_last'], 

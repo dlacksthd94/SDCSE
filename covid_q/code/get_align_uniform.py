@@ -83,7 +83,7 @@ def get_all_embeddings_uniform_all(input_csv, tokenizer, model):
     return emb
 
 
-# [SBERT, SimCSE] Get encodings for calculating alignment (for positive_pairs.csv)
+# [SBERT, SimCSE, DiffCSE] Get encodings for calculating alignment (for positive_pairs.csv)
 def get_sentence_embedding_align(input_csv, model):
     reader = read_csv(input_csv, True)
     
@@ -99,7 +99,7 @@ def get_sentence_embedding_align(input_csv, model):
     return emb1, emb2
 
 
-# [SBERT, SimCSE] Get encodings for calculating uniformity (for train4_uniform.csv)
+# [SBERT, SimCSE, DiffCSE] Get encodings for calculating uniformity (for train4_uniform.csv)
 def get_sentence_embedding_uniform(input_csv, model):
     reader = read_csv(input_csv, True)
     
@@ -112,7 +112,7 @@ def get_sentence_embedding_uniform(input_csv, model):
     return emb
 
 
-# [SBERT, SimCSE] Get encodings for calculating uniformity (for final_master_dataset.csv)
+# [SBERT, SimCSE, DiffCSE] Get encodings for calculating uniformity (for final_master_dataset.csv)
 def get_sentence_embedding_uniform_all(input_csv, model):
     reader = read_csv(input_csv, True)
     
