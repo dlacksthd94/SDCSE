@@ -1,6 +1,6 @@
-*.ipynb
 *.pickle
 __pycache__/
+.ipynb_checkpoints/
 data/
 model/
 SentEval/
