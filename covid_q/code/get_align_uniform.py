@@ -18,6 +18,14 @@ def align_loss(x, y, alpha=2):
 def uniform_loss(x, t=2):
     return torch.pdist(x, p=2).pow(2).mul(-t).exp().mean().log()
 
+# output embedding vector를 unit vector로 normalize
+# BERT, SBERT에서 사용
+def normalize(embeddings):
+    if type(embeddings) == np.ndarray: # torch.Tensor가 아니라 numpy.ndarray인 경우
+        embeddings = torch.Tensor(embeddings)
+    
+    return embeddings / embeddings.norm(dim=0, keepdim=True)
+
 # [BERT] Encode text
 def get_embedding(input_string, tokenizer, model):
     input_ids = torch.tensor([tokenizer.encode(input_string, add_special_tokens = True)])  # Add special tokens takes care of adding [CLS], [SEP], <s>... tokens in the right way for each model.
@@ -27,7 +35,7 @@ def get_embedding(input_string, tokenizer, model):
         last_hidden_states = np.mean(last_hidden_states, axis = 1)
         # last_hidden_states = np.amax(last_hidden_states, axis = 1)
         last_hidden_states = last_hidden_states.flatten()
-        return torch.Tensor(last_hidden_states)
+        return normalize(torch.Tensor(last_hidden_states))
 
 
 # [BERT] Gets all encodings given an input csv (for positive_pairs.csv)
@@ -84,14 +92,18 @@ def get_all_embeddings_uniform_all(input_csv, tokenizer, model):
 
 
 # [SBERT, SimCSE, DiffCSE] Get encodings for calculating alignment (for positive_pairs.csv)
-def get_sentence_embedding_align(input_csv, model):
+def get_sentence_embedding_align(input_csv, model, unit=False):
     reader = read_csv(input_csv, True)
     
     q1 = [row[0] for row in reader]
     q2 = [row[1] for row in reader]
     
-    emb1 = torch.Tensor(model.encode(q1))
-    emb2 = torch.Tensor(model.encode(q2))
+    if unit == False:
+        emb1 = torch.Tensor(model.encode(q1))
+        emb2 = torch.Tensor(model.encode(q2))
+    else:
+        emb1 = normalize(torch.Tensor(model.encode(q1)))
+        emb2 = normalize(torch.Tensor(model.encode(q2)))        
     
     # print('emb1 shape:', emb1.shape)
     # print('emb2 shape:', emb2.shape)
@@ -100,12 +112,15 @@ def get_sentence_embedding_align(input_csv, model):
 
 
 # [SBERT, SimCSE, DiffCSE] Get encodings for calculating uniformity (for train4_uniform.csv)
-def get_sentence_embedding_uniform(input_csv, model):
+def get_sentence_embedding_uniform(input_csv, model, unit=False):
     reader = read_csv(input_csv, True)
     
     q = [row[0] for row in reader]
     
-    emb = torch.Tensor(model.encode(q))
+    if unit == False:
+        emb = torch.Tensor(model.encode(q))
+    else:
+        emb = normalize(torch.Tensor(model.encode(q)))
     
     # print('emb shape:', emb.shape)
 
@@ -113,12 +128,15 @@ def get_sentence_embedding_uniform(input_csv, model):
 
 
 # [SBERT, SimCSE, DiffCSE] Get encodings for calculating uniformity (for final_master_dataset.csv)
-def get_sentence_embedding_uniform_all(input_csv, model):
+def get_sentence_embedding_uniform_all(input_csv, model, unit=False):
     reader = read_csv(input_csv, True)
     
     q = [row[2] for row in reader]
     
-    emb = torch.Tensor(model.encode(q))
+    if unit == False:
+        emb = torch.Tensor(model.encode(q))
+    else:
+        emb = normalize(torch.Tensor(model.encode(q)))
     
     # print('emb shape:', emb.shape)
 
