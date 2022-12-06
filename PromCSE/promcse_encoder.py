@@ -340,6 +340,11 @@ if __name__ == "__main__":
     # Embedding dimension 체크
     if model.encode(test_sentence).shape[0] != 768:
         print(f'Embedding dimension for {args.model_name_or_path} is not 768')
+
+    # Output Embedding Vector Normalized 여부 확인
+    # from numpy import linalg as LA
+    # print('PromCSE:', LA.norm(model.encode(test_sentence), 2))
+    # print('PromCSE:', type(model.encode(test_sentence)))
         
     # Alignment
     q1_emb, q2_emb = get_sentence_embedding_align(align_csv, model)
