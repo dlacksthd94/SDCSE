@@ -5,3 +5,8 @@ data/
 model/
 SentEval/
 sandbox.py
+*.out
+*.sh
+*.png
+*.bin
+*.json
