@@ -1,7 +1,18 @@
 import pickle
 import nltk
 from tqdm import tqdm
-import sys
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
+parser.add_argument('-pp', required=False, help='select constituency parser pipeline from [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
+parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R'], default='wiki1m')
+
+DATASET = parser.parse_args().d
+PARSER = 'benepar_en3' if parser.parse_args().p == 'base' else 'benepar_en3_large'
+PIPELINE = f'en_core_web_{parser.parse_args().pp}'
+N = ''
+print(DATASET)
 
 def vis_tree(doc):
     try:
@@ -23,49 +34,48 @@ def vis_tree(doc):
 # # Use displayCy to visualize the dependency 
 # displacy.render(doc, style='dep', jupyter=True, options={'distance': 120})
 
-##### get subsentence from dependency tree
-with open(f'data/wiki1m_tree_dpd.pickle', 'rb') as f:
-    list_tree = pickle.load(f)
+# ##### get subsentence from dependency tree
+# with open(f'data/{DATASET}_tree_dpd.pickle', 'rb') as f:
+#     list_tree = pickle.load(f)
 
-def walk_tree_dpd(node, depth):
-    if node.n_lefts + node.n_rights > 0:
-        return max(walk_tree_dpd(child, depth + 1) for child in node.children)
-    else:
-        return depth
+# def walk_tree_dpd(node, depth):
+#     if node.n_lefts + node.n_rights > 0:
+#         return max(walk_tree_dpd(child, depth + 1) for child in node.children)
+#     else:
+#         return depth
 
-def get_subsentence_from_dpd_tree(node, max_depth, it=0):
-    result = []
-    if it == max_depth:
-        if node.dep_ not in list2remove:
-            return [node.text]
-        else:
-            return []
-    it += 1
-    if node.n_lefts:
-        for child in node.lefts:
-            result_temp = get_subsentence_from_dpd_tree(child, max_depth, it)
-            result.extend(result_temp)
-    result.append(node.text)
-    if node.n_rights:
-        for child in node.rights:
-            result_temp = get_subsentence_from_dpd_tree(child, max_depth, it)
-            result.extend(result_temp)
-    return result
+# def get_subsentence_from_dpd_tree(node, max_depth, it=0):
+#     result = []
+#     if it == max_depth:
+#         if node.dep_ not in list2remove:
+#             return [node.text]
+#         else:
+#             return []
+#     it += 1
+#     if node.n_lefts:
+#         for child in node.lefts:
+#             result_temp = get_subsentence_from_dpd_tree(child, max_depth, it)
+#             result.extend(result_temp)
+#     result.append(node.text)
+#     if node.n_rights:
+#         for child in node.rights:
+#             result_temp = get_subsentence_from_dpd_tree(child, max_depth, it)
+#             result.extend(result_temp)
+#     return result
 
-doc = list_tree[50000]
-vis_tree(doc)
-node = list(doc.sents)[0].root
+# doc = list_tree[50000]
+# vis_tree(doc)
+# node = list(doc.sents)[0].root
 
-depth = walk_tree_dpd(node, 0)
-for i in range(1, depth + 1):
-    ' '.join(get_subsentence_from_dpd_tree(node, max_depth=i))
+# depth = walk_tree_dpd(node, 0)
+# for i in range(1, depth + 1):
+#     ' '.join(get_subsentence_from_dpd_tree(node, max_depth=i))
 
 ##### get subsentence from constituency tree
-
 list2find = ['ROOT', 'nsubj', 'aux', 'dobj', '']
 list2remove = ['dative', 'prep', 'ccomp']
 
-with open(f'data/wiki1m_tree_cst_lg.pickle', 'rb') as f:
+with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
     list_tree = pickle.load(f)
 
 doc = list_tree[2 - 1]
@@ -86,14 +96,13 @@ for doc in tqdm(list_tree):
     tree = to_nltk_tree(doc)
     list_tree_nltk.append(tree)
 
-with open(f'data/wiki1m_tree_cst_lg_nltk.pickle', 'wb') as f:
+with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_nltk.pickle', 'wb') as f:
     pickle.dump(list_tree_nltk, f)
 
-with open(f'data/wiki1m_tree_cst_lg_nltk.pickle', 'rb') as f:
+with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_nltk.pickle', 'rb') as f:
     list_tree_nltk = pickle.load(f)
 
 # make subsentence
-
 list2find = ['S', 'NP', 'VP']
 list2remove = ['JJ', 'PP', 'ADVP', 'SBAR']
 
@@ -123,14 +132,14 @@ for tree in tqdm(list_tree_nltk):
         for i in range(depth, 0, -1):
             get_subsentence_from_cst_tree(tree, max_depth=i)
             subsentence_temp = ' '.join(tree.leaves())
-            subsentence_temp = subsentence_temp.replace('-LRB- ', '(').replace(' -RRB-', ')').replace(' ,', ',').replace(" '", "'")
+            subsentence_temp = subsentence_temp.replace('-LRB-', '(').replace('-RRB-', ')')
             if subsentence_temp not in list_subsentence_temp:
                 list_subsentence_temp.append(subsentence_temp)
         list_subsentence.append(list_subsentence_temp)
     else:
         list_subsentence.append(['.'])
-list_subsentence[100000]
+list_subsentence[100]
 len(list_subsentence)
 
-with open(f'data/wiki1m_tree_cst_lg_subsentence.pickle', 'wb') as f:
+with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.pickle', 'wb') as f:
     pickle.dump(list_subsentence, f)
