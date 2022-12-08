@@ -12,12 +12,11 @@ import torch
 # arg
 parser = argparse.ArgumentParser()
 parser.add_argument('-n', required=False, help='-1: all, 0: 1/4, 1: 2/4, 2: 3/4, 3: 4/4', type=int, choices=[0, 1, 2, 3, 4], default=-1)
+parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
+parser.add_argument('-pp', required=False, help='select constituency parser pipeline [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
 
-MODEL = 'benepar_en3'
-# MODEL = 'benepar_en3_large'
-# PIPELINE = 'en_core_web_sm'
-# PIPELINE = 'en_core_web_md'
-PIPELINE = 'en_core_web_lg'
+PARSER = 'benepar_en3' if parser.parse_args().p == 'base' else 'benepar_en3_large'
+PIPELINE = f'en_core_web_{parser.parse_args().pp}'
 N = '_' + str(parser.parse_args().n + 1) if parser.parse_args().n + 1 else ''
 START_INDEX = parser.parse_args().n * 250000 if parser.parse_args().n + 1 else 0
 print(N)
@@ -25,7 +24,7 @@ print(START_INDEX)
 
 # set gpu id
 torch.cuda.set_device((parser.parse_args().n + 2) // 2)
-print(torch.cuda.current_device())
+print('cuda:', torch.cuda.current_device())
 
 # load dataset
 with open('../SimCSE/wiki1m_for_simcse.txt') as f:
@@ -36,16 +35,16 @@ for i in tqdm(range(len(list_text))):
     list_text[i] = list_text[i].strip('\n.')
 
 # load model
-benepar.download(MODEL)
+benepar.download(PARSER)
 model = spacy.load(PIPELINE)
 
 if spacy.__version__.startswith('2'):
-    model.add_pipe(benepar.BeneparComponent(MODEL))
+    model.add_pipe(benepar.BeneparComponent(PARSER))
 else:
-    model.add_pipe("benepar", config={"model": MODEL})
+    model.add_pipe("benepar", config={"model": PARSER})
 
 # start parsing
-if not os.path.exists(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{MODEL[11:]}{N}.pickle'):
+if not os.path.exists(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle'):
     # parse sentence
     list_tree = []
     for text in tqdm(list_text[START_INDEX:START_INDEX + 250000], initial=START_INDEX, total=1000000):
@@ -55,10 +54,28 @@ if not os.path.exists(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{MODEL[11:]}{N
         except:
             list_tree.append([])
 
-    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{MODEL[11:]}{N}.pickle', 'wb') as f:
+    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'wb') as f:
         pickle.dump(list_tree, f)
 else:    
-    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{MODEL[11:]}{N}.pickle', 'rb') as f:
+    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
+        list_tree = pickle.load(f)
+
+# concat results
+if not os.path.exists(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle'):
+    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
+        pickle.dump(list_tree, f)
+
+    list_tree = []
+    for i in tqdm(range(1, 4 + 1)):
+        with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_{i}.pickle', 'rb') as f:
+            list_tree_temp = pickle.load(f)
+            list_tree.extend(list_tree_temp)
+    len(list_tree)
+
+    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
+        pickle.dump(list_tree, f)
+else:
+    with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
         list_tree = pickle.load(f)
 
 # get depth
@@ -70,14 +87,6 @@ def walk_tree_cst(node, depth):
 
 list_depth = []
 for doc in tqdm(list_tree):
-    
-    # print ("{:<15} | {:<8} | {:<15} | {:<20}".format('Token','Relation','Head', 'Children'))
-    # print ("-" * 70)
-    # for token in doc:
-    #   # Print the token, dependency nature, head and all dependents of the token
-    #   print ("{:<15} | {:<8} | {:<15} | {:<20}"
-    #          .format(str(token.text), str(token.dep_), str(token.head.text), str([child for child in token.children])))
-
     if len(doc):
         depth = walk_tree_cst(list(doc.sents)[0], 0)
         # [walk_tree_cst(sent.root, 0) for sent in doc.sents]
@@ -85,8 +94,5 @@ for doc in tqdm(list_tree):
         depth = 0
     list_depth.append(depth)
 
-# # Use displayCy to visualize the dependency 
-# displacy.render(doc, style='dep', jupyter=True, options={'distance': 120})
-
-with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{MODEL[11:]}{N}_depth.pickle', 'wb') as f:
+with open(f'wiki1m_for_simcse_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}_depth.pickle', 'wb') as f:
     pickle.dump(list_depth, f)

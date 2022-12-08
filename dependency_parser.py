@@ -40,16 +40,6 @@ def walk_tree_dpd(node, depth):
 doc = list_tree[15]
 list_depth = []
 for doc in tqdm(list_tree):
-    # nlp function returns an object with individual token information, 
-    # linguistic features and relationships
-
-    # print ("{:<15} | {:<8} | {:<15} | {:<20}".format('Token','Relation','Head', 'Children'))
-    # print ("-" * 70)
-    # for token in doc:
-    #   # Print the token, dependency nature, head and all dependents of the token
-    #   print ("{:<15} | {:<8} | {:<15} | {:<20}"
-    #          .format(str(token.text), str(token.dep_), str(token.head.text), str([child for child in token.children])))
-
     if len(doc):
         depth = walk_tree_dpd(list(doc.sents)[0].root, 0)
         # [walk_tree_dpd(sent.root, 0) for sent in doc.sents]
@@ -57,9 +47,6 @@ for doc in tqdm(list_tree):
         depth = 0
     list_depth.append(depth)
     # return depth
-
-# # Use displayCy to visualize the dependency 
-# displacy.render(doc, style='dep', jupyter=True, options={'distance': 120})
 
 with open(f'wiki1m_for_simcse_tree_dpd_depth.pickle', 'wb') as f:
     pickle.dump(list_depth, f)
