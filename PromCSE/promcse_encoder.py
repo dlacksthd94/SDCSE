@@ -331,8 +331,14 @@ if __name__ == "__main__":
 
     model = PromCSE(args)
 
-    align_csv = '../covid_q/data/positive_pairs.csv'
-    uniform_csv = '../covid_q/data/train4_uniform.csv'
+    # Class 단위
+    # align_csv = '../covid_q/data/class_positive_pairs.csv'
+    # uniform_csv = '../covid_q/data/class_train4_uniform.csv'
+    # uniform_all_csv = '../covid_q/data/final_master_dataset.csv'
+
+    # Category 단위
+    align_csv = '../covid_q/data/category_positive_pairs.csv'
+    uniform_csv = '../covid_q/data/category_train20_uniform.csv'
     uniform_all_csv = '../covid_q/data/final_master_dataset.csv'
 
     test_sentence = 'This framework generates embeddings for each input sentence'
