@@ -24,7 +24,7 @@ def vis_tree(doc):
 # displacy.render(doc, style='dep', jupyter=True, options={'distance': 120})
 
 ##### get subsentence from dependency tree
-with open(f'wiki1m_tree_dpd.pickle', 'rb') as f:
+with open(f'data/wiki1m_tree_dpd.pickle', 'rb') as f:
     list_tree = pickle.load(f)
 
 def walk_tree_dpd(node, depth):
@@ -65,7 +65,7 @@ for i in range(1, depth + 1):
 list2find = ['ROOT', 'nsubj', 'aux', 'dobj', '']
 list2remove = ['dative', 'prep', 'ccomp']
 
-with open(f'wiki1m_tree_cst_lg.pickle', 'rb') as f:
+with open(f'data/wiki1m_tree_cst_lg.pickle', 'rb') as f:
     list_tree = pickle.load(f)
 
 doc = list_tree[2 - 1]
@@ -86,10 +86,10 @@ for doc in tqdm(list_tree):
     tree = to_nltk_tree(doc)
     list_tree_nltk.append(tree)
 
-with open(f'wiki1m_tree_cst_lg_nltk.pickle', 'wb') as f:
+with open(f'data/wiki1m_tree_cst_lg_nltk.pickle', 'wb') as f:
     pickle.dump(list_tree_nltk, f)
 
-with open(f'wiki1m_tree_cst_lg_nltk.pickle', 'rb') as f:
+with open(f'data/wiki1m_tree_cst_lg_nltk.pickle', 'rb') as f:
     list_tree_nltk = pickle.load(f)
 
 # make subsentence
@@ -132,5 +132,5 @@ for tree in tqdm(list_tree_nltk):
 list_subsentence[100000]
 len(list_subsentence)
 
-with open(f'wiki1m_tree_cst_lg_subsentence.pickle', 'wb') as f:
+with open(f'data/wiki1m_tree_cst_lg_subsentence.pickle', 'wb') as f:
     pickle.dump(list_subsentence, f)

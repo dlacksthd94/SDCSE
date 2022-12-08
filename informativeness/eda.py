@@ -14,12 +14,12 @@ with open('../SimCSE/wiki1m_for_simcse.txt') as f:
         list_text[i] = list_text[i].strip()
 
 # load embedding
-with open(f'wiki1m_simcse_embedding.pickle', 'rb') as f:
+with open(f'data/wiki1m_simcse_embedding.pickle', 'rb') as f:
     list_embedding = pickle.load(f)
     embeddings = np.array(list_embedding)
 
 # load tree depth
-with open(f'wiki1m_tree_cst_depth.pickle', 'rb') as f:
+with open(f'data/wiki1m_tree_cst_depth.pickle', 'rb') as f:
     list_depth = pickle.load(f)
     tree_depths = np.array(list_depth)
 

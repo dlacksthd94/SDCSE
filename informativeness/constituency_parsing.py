@@ -44,7 +44,7 @@ else:
     model.add_pipe("benepar", config={"model": PARSER})
 
 # start parsing
-if not os.path.exists(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle'):
+if not os.path.exists(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle'):
     # parse sentence
     list_tree = []
     for text in tqdm(list_text[START_INDEX:START_INDEX + 250000], initial=START_INDEX, total=1000000):
@@ -54,28 +54,28 @@ if not os.path.exists(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle')
         except:
             list_tree.append([])
 
-    with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'wb') as f:
+    with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'wb') as f:
         pickle.dump(list_tree, f)
 else:    
-    with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
+    with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
         list_tree = pickle.load(f)
 
 # concat results
-if not os.path.exists(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle'):
-    with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
+if not os.path.exists(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle'):
+    with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
         pickle.dump(list_tree, f)
 
     list_tree = []
     for i in tqdm(range(1, 4 + 1)):
-        with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_{i}.pickle', 'rb') as f:
+        with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_{i}.pickle', 'rb') as f:
             list_tree_temp = pickle.load(f)
             list_tree.extend(list_tree_temp)
     len(list_tree)
 
-    with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
+    with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
         pickle.dump(list_tree, f)
 else:
-    with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
+    with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
         list_tree = pickle.load(f)
 
 # get depth
@@ -94,5 +94,5 @@ for doc in tqdm(list_tree):
         depth = 0
     list_depth.append(depth)
 
-with open(f'wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}_depth.pickle', 'wb') as f:
+with open(f'data/wiki1m_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}_depth.pickle', 'wb') as f:
     pickle.dump(list_depth, f)
