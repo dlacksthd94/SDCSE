@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "result/my-unsup-dcpcse-bert-base-uncased",
+  "_name_or_path": "unsup-promcse-bert-base-uncased",
   "architectures": [
     "BertForCL"
   ],

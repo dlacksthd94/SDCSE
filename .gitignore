@@ -9,3 +9,4 @@ sandbox.py
 *.sh
 *.png
 *.bin
+*.json
