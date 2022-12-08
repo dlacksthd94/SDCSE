@@ -14,7 +14,7 @@ with open('../SimCSE/wiki1m_for_simcse.txt') as f:
 for i in tqdm(range(len(list_text))):
     list_text[i] = list_text[i].strip('\n.')
 
-if not os.path.exists(f'wiki1m_for_simcse_tree_dpd.pickle'):
+if not os.path.exists(f'wiki1m_tree_dpd.pickle'):
     # Load the language model
     model = spacy.load("en_core_web_sm")
 
@@ -24,10 +24,10 @@ if not os.path.exists(f'wiki1m_for_simcse_tree_dpd.pickle'):
         doc = model(text)
         list_tree.append(doc)
 
-    with open(f'wiki1m_for_simcse_tree_dpd.pickle', 'wb') as f:
+    with open(f'wiki1m_tree_dpd.pickle', 'wb') as f:
         pickle.dump(list_tree, f)
 else:    
-    with open(f'wiki1m_for_simcse_tree_dpd.pickle', 'rb') as f:
+    with open(f'wiki1m_tree_dpd.pickle', 'rb') as f:
         list_tree = pickle.load(f)
 
 # get depth
@@ -48,5 +48,5 @@ for doc in tqdm(list_tree):
     list_depth.append(depth)
     # return depth
 
-with open(f'wiki1m_for_simcse_tree_dpd_depth.pickle', 'wb') as f:
+with open(f'wiki1m_tree_dpd_depth.pickle', 'wb') as f:
     pickle.dump(list_depth, f)
