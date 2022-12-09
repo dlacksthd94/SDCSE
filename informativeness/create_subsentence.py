@@ -104,7 +104,7 @@ with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_nltk.pickle', '
 
 # make subsentence
 list2find = ['S', 'NP', 'VP']
-list2remove = ['JJ', 'PP', 'ADVP', 'SBAR']
+list2remove = ['PP', 'ADVP', 'SBAR'] # removed JJ
 
 def walk_tree_cst(node, depth):
     if list(node._.children):
