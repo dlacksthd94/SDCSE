@@ -9,9 +9,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 # arg
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', required=False, help='select mode from [base, sub, mask]', type=str, choices=['base', 'sub', 'mask'], default='sub')
+parser.add_argument('-m', required=False, help='select mode from [base, sub, mask]', type=str, choices=['base', 'sub', 'mask'], default='mask')
 parser.add_argument('-g', required=False, help='select which gpu to run on', type=int, choices=[0, 1, 2, 3], default=0)
-parser.add_argument('-e', required=False, help='select sentence encoder [bert, sbert, simcse, diffcse, promcse]', type=str, choices=['bert', 'sbert', 'simcse', 'diffcse', 'promcse'], default='simcse')
+parser.add_argument('-e', required=False, help='select sentence encoder [bert, sbert, simcse, diffcse, promcse]', type=str, choices=['bert', 'sbert', 'simcse', 'diffcse', 'promcse'], default='diffcse')
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
 parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R'], default='wiki1m')
@@ -90,7 +90,7 @@ elif MODE == 'sub':
         # make batch to load on GPU
         list_batch = []
         for subsentence in tqdm(list_subsentence):
-            batch = tokenizer(text=subsentence, padding=True, truncation=True, return_tensors="pt", verbose=True)
+            batch = tokenizer(text=subsentence, padding=True, truncation=True, return_tensors="pt", verbose=True, max_length=510)
             list_batch.append(batch)
 
         with open(f'data/{DATASET}_{ENCODER}_tokenized_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'wb') as f:
@@ -113,4 +113,38 @@ elif MODE == 'sub':
     embeddings = list(map(lambda embedding: embedding.detach().cpu().numpy(), list_embeddings))
 
     with open(f'data/{DATASET}_{ENCODER}_embedding_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'wb') as f:
+        pickle.dump(embeddings, f)
+
+elif MODE == 'mask':
+    if not os.path.exists(f'data/{DATASET}_{ENCODER}_tokenized_mask.pickle'):
+        # load dataset
+        with open(f'data/{DATASET}_masked.pickle', 'rb') as f:
+            list_masked_sentence = pickle.load(f)
+
+        # make batch to load on GPU
+        list_batch = []
+        for masked_sentence in tqdm(list_masked_sentence):
+            batch = tokenizer(text=masked_sentence, padding=True, truncation=True, return_tensors="pt", verbose=True, max_length=510)
+            list_batch.append(batch)
+
+        with open(f'data/{DATASET}_{ENCODER}_tokenized_mask.pickle', 'wb') as f:
+            pickle.dump(list_batch, f)
+    else:
+        with open(f'data/{DATASET}_{ENCODER}_tokenized_mask.pickle', 'rb') as f:
+            list_batch = pickle.load(f)
+    
+    for i in tqdm(range(len(list_batch))):
+        _ = list_batch[i].to(f'cuda:{GPU_ID}')
+
+    # get embeddings
+    _ = model.to(f'cuda:{GPU_ID}')
+    list_embeddings = []
+    with torch.no_grad():
+        for batch in tqdm(list_batch):
+            embeddings_temp = model(**batch, output_hidden_states=True, return_dict=True).pooler_output
+            list_embeddings.append(embeddings_temp)
+
+    embeddings = list(map(lambda embedding: embedding.detach().cpu().numpy(), list_embeddings))
+
+    with open(f'data/{DATASET}_{ENCODER}_embedding_mask.pickle', 'wb') as f:
         pickle.dump(embeddings, f)
