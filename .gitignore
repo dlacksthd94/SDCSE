@@ -11,3 +11,4 @@ sandbox.py
 *.bin
 *.json
 SimCSE
+*.csv
