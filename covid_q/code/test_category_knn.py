@@ -1,3 +1,4 @@
+import os
 import operator
 import numpy as np
 from scipy import spatial
@@ -67,12 +68,14 @@ def get_accuracy(testing_questions_to_category, training_questions_to_category, 
         test_embedding = question_to_embeddings[test_question]
         ground_truth = testing_questions_to_category[test_question]
 
-        nearest_neighbors = get_k_nearest_neighbor(test_embedding, training_questions, question_to_embeddings, training_questions_to_category, k = 1, distance_measurement = 'Cosine')
+        # k값, Distance measurement 수정 가능
+        nearest_neighbors = get_k_nearest_neighbor(test_embedding, training_questions, question_to_embeddings, training_questions_to_category, k = 5, distance_measurement = 'Cosine')
 
         if is_correct(nearest_neighbors, training_questions_to_category, ground_truth) is True:
             num_correct += 1
         else:
-            print(f"Test: {test_question} | Predictions: {nearest_neighbors}")
+            # print(f"Test: {test_question} | Predictions: {nearest_neighbors}")
+            pass
         
         num_total += 1
 
@@ -81,9 +84,22 @@ def get_accuracy(testing_questions_to_category, training_questions_to_category, 
 
 
 #           MAIN            #
-training_question_to_category_path = 'dataset_categories/train20_augmented.csv'
-training_questions_to_category = get_questions_to_category(training_question_to_category_path)
+training_questions_to_category = get_questions_to_category('dataset_categories/train20.csv')
 testing_questions_to_category = get_questions_to_category('dataset_categories/testA.csv')
-question_to_embeddings = read_pickle('dataset_categories/augmented_question_embeddings.pickle')
 
-print(round(get_accuracy(testing_questions_to_category, training_questions_to_category, question_to_embeddings), 3))
+# 이 .py 말고 downstream_task.ipynb로 실행할 때의 기준
+directory = 'data/'
+result = []
+
+for filename in sorted(os.listdir(directory)):
+    if filename.endswith(".pickle"):
+        question_to_embeddings = read_pickle(os.path.join(directory, filename))
+        acc = round(get_accuracy(testing_questions_to_category, training_questions_to_category, question_to_embeddings), 3)
+        result.append(acc)
+        print(filename.split('.')[0].split('question_embeddings_')[1], ':', acc)
+
+# 엑셀에 기록하기 좋게 print
+print()
+print('[For Excel]')
+for i in [0, 7, 8, 10, 11, 6, 9, 14, 15, 12, 13, 1, 2, 3, 4, 5]:
+    print(result[i])

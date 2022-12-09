@@ -1,5 +1,6 @@
 # Tests BERT embeddings with an SVM model
 
+import os
 from methods import read_pickle, read_csv, write_dict_to_csv
 import numpy as np
 from sklearn import svm
@@ -47,14 +48,28 @@ category_to_num = {'Transmission': 0,
                    'Having COVID': 12,
                    'Nomenclature': 13,
                    'Symptoms': 14}
-question_to_embedding = read_pickle('dataset_categories/augmented_question_embeddings.pickle')
 
-train_x, train_y = get_embedding_data('dataset_categories/train20_augmented.csv', category_to_num, question_to_embedding)
-testA_x, testA_y = get_embedding_data('dataset_categories/testA.csv', category_to_num, question_to_embedding)
-testB_x, testB_y = get_embedding_data('dataset_categories/testB.csv', category_to_num, question_to_embedding)
 
-classifier = svm.SVC()
-classifier.fit(train_x, train_y)
+# 이 .py 말고 downstream_task.ipynb로 실행할 때의 기준
+directory = 'data/'
+result = []
 
-print(f'Real Questions: {round(check_predictions(classifier, testA_x, testA_y), 3)}')
-print(f'Generated Questions: {round(check_predictions(classifier, testB_x, testB_y), 3)}')
+for filename in sorted(os.listdir(directory)):
+    if filename.endswith(".pickle"):
+        question_to_embedding = read_pickle(os.path.join(directory, filename))
+        
+        train_x, train_y = get_embedding_data('dataset_categories/train20.csv', category_to_num, question_to_embedding)
+        testA_x, testA_y = get_embedding_data('dataset_categories/testA.csv', category_to_num, question_to_embedding)
+        
+        classifier = svm.SVC()
+        classifier.fit(train_x, train_y)        
+        
+        acc = round(check_predictions(classifier, testA_x, testA_y), 3)
+        result.append(acc)
+        print(filename.split('.')[0].split('question_embeddings_')[1], ':', acc)
+
+# 엑셀에 기록하기 좋게 print
+print()
+print('[For Excel]')
+for i in [0, 7, 8, 10, 11, 6, 9, 14, 15, 12, 13, 1, 2, 3, 4, 5]:
+    print(result[i])
