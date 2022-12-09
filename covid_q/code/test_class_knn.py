@@ -1,3 +1,4 @@
+import os
 import operator
 import numpy as np
 from scipy import spatial
@@ -94,7 +95,8 @@ def get_accuracy(test_id_to_questions, embedding_path, training_question_to_id_p
             if is_correct(training_questions_to_id, predicted_neighbors, question_id):
                 current_correct += 1
             else:
-                print(f"Test: {test_question} | Predictions: {predicted_neighbors}")
+                # print(f"Test: {test_question} | Predictions: {predicted_neighbors}")
+                pass
 
             current_total += 1
 
@@ -107,25 +109,36 @@ def get_accuracy(test_id_to_questions, embedding_path, training_question_to_id_p
 
     write_dict_to_csv('predictions.csv', test_to_predictions)
 
-    print(f'Overall accuracy: {round(1.0*total_correct/total, 3)}')
-
-    return round(np.mean(accuracies_by_id), 3)
+    return round(np.mean(accuracies_by_id), 3), round(1.0*total_correct/total, 3) # Classwise accuracy, Overall accuracy
 
 
 #           MAIN            #
+for input_test_set in ['dataset_classes/split_3/testA.csv']:
+    # print(input_test_set)
+    for n in [1, 5]:
+        print('k =', n)
+        test_id_to_questions = get_id_to_questions(input_test_set)
 
-# for input_test_set in ['dataset_classes/testA.csv', 'dataset_classes/testB.csv']:
-#     print(input_test_set)
-#     for n in [1, 5]:
-#         test_id_to_questions = get_id_to_questions(input_test_set)
-#         accuracy = get_accuracy(test_id_to_questions, 'dataset_classes/augmented_question_embeddings.pickle', 'dataset_classes/train3_augmented.csv', n)
-#         print(f'Classwise accuracy: {accuracy}')
-#     print('-----------')
+        # 이 .py 말고 downstream_task.ipynb로 실행할 때의 기준
+        directory = 'data/'
+        result_classwise = []
+        result_overall = []
 
-# If want to manually input questions to get k-NN
-test_id_to_questions = {105: ['where can i report websites selling fraudulent medical products'],
-                        113: ['can i donate convalescent plasma'],
-                        204: ['what is the difference between cleaning and disinfecting'],
-                        206: ['how frequently should facilities be cleaned to reduce the potential spread of covid']}
+        for filename in sorted(os.listdir(directory)):
+            if filename.endswith(".pickle"):
+                classwise_acc, overall_acc = get_accuracy(test_id_to_questions, os.path.join(directory, filename), 'dataset_classes/split_3/train3.csv', n)
+                result_classwise.append(classwise_acc)
+                result_overall.append(overall_acc)
+                print(filename.split('.')[0].split('question_embeddings_')[1], ':', classwise_acc, '/', overall_acc)
+        
+        # 엑셀에 기록하기 좋게 print
+        print()
+        print('[For Excel: Classwise Accuracy]')
+        for i in [0, 7, 8, 10, 11, 6, 9, 14, 15, 12, 13, 1, 2, 3, 4, 5]:
+            print(result_classwise[i])
+        print()
+        print('[For Excel: Overall Accuracy]')
+        for i in [0, 7, 8, 10, 11, 6, 9, 14, 15, 12, 13, 1, 2, 3, 4, 5]:
+            print(result_overall[i])
+        print()
 
-get_accuracy(test_id_to_questions, 'dataset_classes/augmented_question_embeddings.pickle', 'dataset_classes/train3.csv', 3)
