@@ -11,7 +11,7 @@ import torch
 
 # arg
 parser = argparse.ArgumentParser()
-parser.add_argument('-n', required=False, help='-1: all, 0: 1/4, 1: 2/4, 2: 3/4, 3: 4/4', type=int, choices=[0, 1, 2, 3, 4], default=-1)
+parser.add_argument('-n', required=False, help='-1: all, 0: 1/4, 1: 2/4, 2: 3/4, 3: 4/4', type=int, choices=[-1, 0, 1, 2, 3], default=-1)
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline from [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
 parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R'], default='wiki1m')
