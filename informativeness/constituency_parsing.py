@@ -11,10 +11,11 @@ import torch
 
 # arg
 parser = argparse.ArgumentParser()
-parser.add_argument('-n', required=False, help='-1: all, 0: 1/4, 1: 2/4, 2: 3/4, 3: 4/4', type=int, choices=[0, 1, 2, 3, 4], default=-1)
+parser.add_argument('-n', required=False, help='-1: all, 0: 1/4, 1: 2/4, 2: 3/4, 3: 4/4', type=int, choices=[-1, 0, 1, 2, 3], default=-1)
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline from [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
-parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R'], default='wiki1m')
+parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R, nli, quora, simplewiki, specter, covid]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'nli', 'quora', 'simplewiki', 'specter', 'covid'], default='wiki1m')
+parser.add_argument('-g', required=False, help='select which gpu to run on', type=int, choices=[0, 1, 2, 3], default=0)
 
 DATASET = parser.parse_args().d
 PARSER = 'benepar_en3' if parser.parse_args().p == 'base' else 'benepar_en3_large'
@@ -24,11 +25,11 @@ print(N)
 print(DATASET)
 
 # set gpu id
-torch.cuda.set_device((parser.parse_args().n + 2) // 2)
+torch.cuda.set_device(parser.parse_args().g)
 print('cuda:', torch.cuda.current_device())
 
 # load dataset
-with open(f'../SimCSE/{DATASET + "_for_simcse" if DATASET == "wiki1m" else DATASET}.txt') as f:
+with open(f'../SimCSE/{DATASET}.txt') as f:
     list_text = f.readlines()
 
 # preprocessing
@@ -64,26 +65,26 @@ else:
     with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
         list_tree = pickle.load(f)
 
-# concat results
-if not os.path.exists(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle'):
-    with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
-        pickle.dump(list_tree, f)
+# # concat results
+# if not os.path.exists(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle'):
+#     # with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
+#     #     pickle.dump(list_tree, f)
 
-    list_tree = []
-    for i in tqdm(range(1, 4 + 1)):
-        try:
-            with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_{i}.pickle', 'rb') as f:
-                list_tree_temp = pickle.load(f)
-            list_tree.extend(list_tree_temp)
-        except:
-            pass
-    len(list_tree)
+#     list_tree = []
+#     for i in tqdm(range(1, 4 + 1)):
+#         try:
+#             with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_{i}.pickle', 'rb') as f:
+#                 list_tree_temp = pickle.load(f)
+#             list_tree.extend(list_tree_temp)
+#         except:
+#             pass
+#     len(list_tree)
 
-    with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
-        pickle.dump(list_tree, f)
-else:
-    with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
-        list_tree = pickle.load(f)
+#     with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'wb') as f:
+#         pickle.dump(list_tree, f)
+# else:
+#     with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
+#         list_tree = pickle.load(f)
 
 # get depth
 def walk_tree_cst(node, depth):
