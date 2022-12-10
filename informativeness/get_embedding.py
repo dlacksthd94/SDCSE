@@ -14,7 +14,7 @@ parser.add_argument('-g', required=False, help='select which gpu to run on', typ
 parser.add_argument('-e', required=False, help='select sentence encoder [bert, sbert, simcse, diffcse, promcse]', type=str, choices=['bert', 'sbert', 'simcse', 'diffcse', 'promcse'], default='diffcse')
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
-parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R'], default='wiki1m')
+parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R, nli, quora, simplewiki, specter, covid]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'nli', 'quora', 'simplewiki', 'specter', 'covid'], default='wiki1m')
 
 DATASET = parser.parse_args().d
 BATCH_SIZE = 64 # 32 or 64
@@ -46,7 +46,7 @@ elif ENCODER == 'diffcse':
 if MODE == 'base':
     if not os.path.exists(f'data/{DATASET}_{ENCODER}_tokenized.pickle'):
         # load dataset
-        with open(f'../SimCSE/{DATASET + "_for_simcse" if DATASET == "wiki1m" else DATASET}.txt') as f:
+        with open(f'../SimCSE/{DATASET}.txt') as f:
             list_text = f.readlines()
                         
         # preprocessing
