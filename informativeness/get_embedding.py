@@ -11,10 +11,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', required=False, help='select mode from [base, sub, mask]', type=str, choices=['base', 'sub', 'mask'], default='sub')
 parser.add_argument('-g', required=False, help='select which gpu to run on', type=int, choices=[0, 1, 2, 3], default=0)
-parser.add_argument('-e', required=False, help='select sentence encoder [bert, sbert, simcse, diffcse, promcse]', type=str, choices=['bert', 'sbert', 'simcse', 'diffcse'], default='diffcse')
+parser.add_argument('-e', required=False, help='select sentence encoder [bert, sbert, simcse, diffcse, promcse]', type=str, choices=['bert', 'sbert', 'simcse', 'diffcse', 'promcse'], default='promcse')
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
-parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R, nli, quora, simplewiki, specter, covid]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'nli', 'quora', 'simplewiki', 'specter', 'covid'], default='wiki1m')
+parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R, nli, quora, simplewiki, specter, covid]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'nli', 'quora', 'simplewiki', 'specter', 'covid', 'huffpost'], default='wiki1m')
 
 DATASET = parser.parse_args().d
 BATCH_SIZE = 64 # 32 or 64
@@ -29,7 +29,8 @@ dict_dataset = {
     'bert': {'bert': "bert-base-uncased", 'roberta': "roberta-base"},
     'sbert': {'bert': "sentence-transformers/nli-bert-base", 'roberta': "sentence-transformers/nli-roberta-base"},
     'simcse': {'bert': "princeton-nlp/unsup-simcse-bert-base-uncased", 'roberta': "princeton-nlp/unsup-simcse-roberta-base"},
-    'diffcse': {'bert': "voidism/diffcse-bert-base-uncased-sts", 'roberta': "voidism/diffcse-roberta-base-sts"}
+    'diffcse': {'bert': "voidism/diffcse-bert-base-uncased-sts", 'roberta': "voidism/diffcse-roberta-base-sts"},
+    'promcse': {'bert': "YuxinJiang/unsup-promcse-bert-base-uncased", 'roberta': "YuxinJiang/sup-promcse-roberta-large"}
 }
 
 # load tokenizer & model

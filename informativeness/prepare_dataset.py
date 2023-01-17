@@ -67,3 +67,6 @@ with open(f'../SimCSE/final_master_dataset.csv', 'r') as f:
 list_text = list(map(lambda line: line[2] + '?', list_line))
 with open(f'../SimCSE/covid.txt', 'w') as f:
     _ = f.write('\n'.join(list_text))
+    
+df_huffpost = pd.read_csv(f'../SimCSE/huffpost_positive_pairs_10000.csv')
+df_huffpost['headline'].to_csv(f'../SimCSE/huffpost.txt', index=False, header=False)
