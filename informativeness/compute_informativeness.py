@@ -6,9 +6,10 @@ from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 from scipy.stats import spearmanr, pearsonr
 from itertools import chain
+import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
+parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='large')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
 parser.add_argument('-m', required=False, help='select mode from [base, sub, mask]', type=str, choices=['base', 'sub', 'mask'], default='sub')
 parser.add_argument('-n', required=False, help='select normalization method from [orig, zero_mean, zscore]', type=str, choices=['orig', 'zero_mean', 'zscore'], default='orig')
@@ -20,9 +21,11 @@ N = ''
 NORMALIZATION = parser.parse_args().n
 
 # list_dataset = ['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'quora', 'simplewiki', 'specter', 'covid', 'huffpost']
-list_dataset = ['covid', 'huffpost']
-list_encoder = ['bert', 'sbert', 'simcse', 'diffcse', 'promcse']
+list_dataset = ['wiki1m']
+list_encoder = ['bert', 'sbert', 'simcse', 'diffcse', 'promcse', 'mcse']
+list_pretraining_method = ['unsup', 'sup']
 list_plm = ['bert', 'roberta']
+list_pooler_method = ['wp', 'wop']
 
 def show_example(list_embedding, list_subsentences, i):
     list_norm_temp = (list_embedding[i] ** 2).sum(axis=1) ** 0.5    
@@ -39,60 +42,71 @@ def show_example(list_embedding, list_subsentences, i):
 
 # computing subsentence norm
 if MODE == 'sub':
+    multi_level_columns_init = [list_pretraining_method, list_encoder, list_plm, list_pooler_method]
+    df_result = pd.DataFrame(index=list_dataset, columns=pd.MultiIndex.from_product(multi_level_columns_init))
+    df_result['num_data'] = None
+    for encoder in tqdm(list_encoder):
+        for pretraining_method in tqdm(list_pretraining_method, leave=False):
+            for plm in tqdm(list_plm, leave=False):
+                for dataset in tqdm(list_dataset, leave=False):
+                    if not os.path.exists(f'data/{dataset}_{encoder}_{pretraining_method}_{plm}_embedding_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle'):
+                        continue
+                    
+                    with open(f'data/{dataset}_{encoder}_{pretraining_method}_{plm}_embedding_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
+                        list_embedding = pickle.load(f)
+                    list_embedding_w_pooler, list_embedding_wo_pooler = list(zip(*list_embedding))
+                    
+                    for list_embedding, pooler_method in tqdm(zip([list_embedding_w_pooler, list_embedding_wo_pooler], ['w_p', 'wo_p']), leave=False, total=2):
+                        num_data = np.concatenate(list_embedding).shape[0]
+                        embedding_avg = np.concatenate(list_embedding).mean(axis=0)
+                        embedding_std = np.concatenate(list_embedding).std(axis=0)
+                        embedding_norm = np.linalg.norm(np.concatenate(list_embedding), axis=1)
+                        
+                        # # show example
+                        # dataset = 'simplewiki'
+                        # encoder = 'simcse'
+                        # plm = 'bert'
+                        # with open(f'data/{dataset}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}_subsentence.pickle', 'rb') as f:
+                        #     list_subsentences = pickle.load(f)
+                        # # list_i = 33132, 493763, 695194, 908158, 225215, 514394, 848055, 901159, 348773, 736685, 544060, 643723
+                        # i = np.random.randint(0, len(list_embedding))
+                        # show_example(list_embedding, list_subsentences, i)
+                        
+                        list_corr = []
+                        list_len = []
+                        for i in tqdm(range(len(list_embedding)), leave=False):
+                            if list_embedding[i].shape[0] >= 2:
+                                if NORMALIZATION == 'orig':
+                                    embedding_temp = list_embedding[i][:]
+                                elif NORMALIZATION == 'zero_mean':
+                                    embedding_temp = list_embedding[i][:] - embedding_avg
+                                elif NORMALIZATION == 'zscore':
+                                    embedding_temp = (list_embedding[i][:] - embedding_avg) / embedding_std
+                                list_norm_temp = np.linalg.norm(embedding_temp, axis=1)
+                                list_norm_rank = list_norm_temp.argsort()[::-1]
+                                corr_s = spearmanr(list_norm_rank, np.arange(list_norm_temp.shape[0]))[0]
+                                list_corr.append(corr_s)
+                                list_len.append(list_norm_temp.shape[0])
+                        corr_wmean = (np.array(list_corr) * np.array(list_len) / np.array(list_len).sum()).sum()
+                        df_result[pretraining_method, encoder, plm, pooler_method][dataset] = corr_wmean
+                        
+                        df_result.loc['norm_mean', (pretraining_method, encoder, plm, pooler_method)] = embedding_norm.mean()
+                        df_result.loc['norm_std', (pretraining_method, encoder, plm, pooler_method)] = embedding_norm.std()
+                    df_result.loc[dataset, pd.IndexSlice['num_data', '', '']] = num_data
 
-    df_result = pd.DataFrame(columns=[list(chain.from_iterable(zip(list_encoder, list_encoder))), list_plm * len(list_encoder)], index=list_dataset)
-    list_num_data = []
-    for dataset in tqdm(list_dataset):
-        for plm in tqdm(list_plm, leave=False):
-            for encoder in tqdm(list_encoder, leave=False):
-                with open(f'data/{dataset}_{encoder}_{plm}_embedding_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
-                    list_embedding = pickle.load(f)
-                num_data = np.concatenate(list_embedding).shape[0]
-                embedding_avg = np.concatenate(list_embedding).mean(axis=0)
-                embedding_std = np.concatenate(list_embedding).std(axis=0)
-                
-                # # show example
-                # dataset = 'simplewiki'
-                # encoder = 'simcse'
-                # plm = 'bert'
-                # with open(f'data/{dataset}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}_subsentence.pickle', 'rb') as f:
-                #     list_subsentences = pickle.load(f)
-                # # list_i = 33132, 493763, 695194, 908158, 225215, 514394, 848055, 901159, 348773, 736685, 544060, 643723
-                # i = np.random.randint(0, len(list_embedding))
-                # show_example(list_embedding, list_subsentences, i)
-                
-                list_corr = []
-                list_len = []
-                for i in tqdm(range(len(list_embedding)), leave=False):
-                    if list_embedding[i].shape[0] >= 2:
-                        if NORMALIZATION == 'orig':
-                            embedding_temp = list_embedding[i][:]
-                        elif NORMALIZATION == 'zero_mean':
-                            embedding_temp = list_embedding[i][:] - embedding_avg
-                        elif NORMALIZATION == 'zscore':
-                            embedding_temp = (list_embedding[i][:] - embedding_avg) / embedding_std
-                        list_norm_temp = np.linalg.norm(embedding_temp, axis=1)
-                        list_norm_rank = list_norm_temp.argsort()[::-1]
-                        corr_s = spearmanr(list_norm_rank, np.arange(list_norm_temp.shape[0]))[0]
-                        list_corr.append(corr_s)
-                        list_len.append(list_norm_temp.shape[0])
-                corr_wmean = (np.array(list_corr) * np.array(list_len) / np.array(list_len).sum()).sum()
-                df_result[encoder, plm][dataset] = corr_wmean
-        list_num_data.append(num_data)
-    
-    avg = df_result.mean(axis=0)
-    avg_w = df_result.apply(lambda col: col * list_num_data).sum(axis=0) / sum(list_num_data)
+    avg = df_result[:-2].mean(axis=0)
+    avg_w = (df_result[:-2].apply(lambda col: col * df_result['num_data']).sum(axis=0) / df_result['num_data'].sum()).replace(0, np.nan)
     df_result.loc['avg'] = avg
     df_result.loc['avg_w'] = avg_w
-    df_result = df_result.astype(float).round(3)
-    df_result.to_csv(f'result_subsentence_informativeness_{PIPELINE[12:]}{PARSER[11:]}{N}_{NORMALIZATION}.csv')
+    df_result_round = df_result.astype(float).round(5)
+    df_result_round.to_csv(f'result/result_subsentence_informativeness_{PIPELINE[12:]}{PARSER[11:]}{N}_{NORMALIZATION}.csv')
 
 elif MODE == 'mask':
     df_result = pd.DataFrame(columns=list_encoder, index=list_dataset)
     for dataset in tqdm(list_dataset):
         for plm in tqdm(list_plm, leave=False):
             for encoder in tqdm(list_encoder, leave=False):
-                with open(f'data/{dataset}_{encoder}_{plm}_embedding_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
+                with open(f'data/{dataset}_{encoder}_{pretraining_method}_{plm}_embedding_subsentence_{PIPELINE[12:]}{PARSER[11:]}{N}.pickle', 'rb') as f:
                     list_embedding = pickle.load(f)
                 with open(f'data/{dataset}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}{N}_subsentence.pickle', 'rb') as f:
                     list_subsentences = pickle.load(f)
@@ -110,4 +124,7 @@ elif MODE == 'mask':
                     list_norm_diff_sum.append(norm_diff_sum)
                 norm_diff_mean = np.array(list_norm_diff_sum).mean()
                 df_result[encoder][dataset] = norm_diff_mean
-    df_result.to_csv('result_subsentence.csv')
+    df_result.to_csv('result/result_subsentence.csv')
+
+df = pd.read_csv(f'result/result_subsentence_informativeness_{PIPELINE[12:]}{PARSER[11:]}{N}_{NORMALIZATION}.csv', header=[0,1,2,3], index_col=0)
+df.loc[:, pd.IndexSlice[:, :, :, 'wo_p']]

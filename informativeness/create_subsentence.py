@@ -4,7 +4,7 @@ from tqdm import tqdm
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
+parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='large')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline from [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
 parser.add_argument('-d', required=False, help='select dataset from [wiki1m, STS12, STS13, STS14, STS15, STS16, STS-B, SICK-R, nli, quora, simplewiki, specter, covid]', type=str, choices=['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'nli', 'quora', 'simplewiki', 'specter', 'covid', 'huffpost'], default='wiki1m')
 

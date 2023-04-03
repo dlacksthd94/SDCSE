@@ -8,7 +8,7 @@ from scipy.stats import spearmanr, pearsonr
 from itertools import chain
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='base')
+parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='large')
 parser.add_argument('-pp', required=False, help='select constituency parser pipeline [sm, md, lg]', type=str, choices=['sm', 'md', 'lg'], default='lg')
 parser.add_argument('-m', required=False, help='select mode from [base, sub, mask]', type=str, choices=['base', 'sub', 'mask'], default='sub')
 
@@ -18,7 +18,8 @@ MODE = parser.parse_args().m
 N = ''
 
 # list_dataset = ['wiki1m', 'STS12', 'STS13', 'STS14', 'STS15', 'STS16', 'STS-B', 'SICK-R', 'quora', 'simplewiki', 'specter', 'covid', 'huffpost']
-list_dataset = ['covid', 'huffpost']
+# list_dataset = ['covid', 'huffpost']
+list_dataset = ['wiki1m']
 list_encoder = ['bert', 'sbert', 'simcse', 'diffcse', 'promcse']
 list_plm = ['bert', 'roberta']
 
@@ -47,4 +48,4 @@ avg_w = df_result.apply(lambda col: col * list_num_data).sum(axis=0) / sum(list_
 df_result.loc['avg'] = avg
 df_result.loc['avg_w'] = avg_w
 df_result = df_result.astype(float).round(3)
-df_result.to_csv(f'result_avg_rand_cos_sim_{PIPELINE[12:]}{PARSER[11:]}{N}.csv')
+df_result.to_csv(f'result/result_avg_rand_cos_sim_{PIPELINE[12:]}{PARSER[11:]}{N}.csv')

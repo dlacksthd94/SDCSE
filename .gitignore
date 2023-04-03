@@ -10,6 +10,16 @@ sandbox.py
 *.png
 *.bin
 *.json
-SimCSE
 *.csv
 scidocs
+result
+
+# encoders
+SimCSE
+DiffCSE
+PromCSE
+MCSE
+InfoCSE
+gsInfoNCE
+ESimCSE
+SDCSE
