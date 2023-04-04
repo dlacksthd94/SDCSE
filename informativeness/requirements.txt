@@ -10,3 +10,4 @@ setuptools==49.3.0
 accelerate==0.3.0
 h5py==3.3.0
 nltk
+pdbpp
