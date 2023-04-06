@@ -2,6 +2,9 @@ import pickle
 import nltk
 from tqdm import tqdm
 import argparse
+import json
+import os
+from itertools import chain
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='large')
@@ -141,5 +144,17 @@ for tree in tqdm(list_tree_nltk):
 list_subsentence[100]
 len(list_subsentence)
 
-with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.pickle', 'wb') as f:
+assert sum([len(l) == 0 for l in list_subsentence]) == 0
+
+with open(f'../data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.pickle', 'xb',) as f:
     pickle.dump(list_subsentence, f)
+
+with open(f'../data/backup_1000000/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.pickle', 'rb') as f:
+    list_subsentence = pickle.load(f)
+
+list_json = list(chain.from_iterable(map(lambda il: [{'text': s, 'group': il[0], 'rank': j} for j, s in enumerate(il[1])], tqdm(enumerate(list_subsentence), total=len(list_subsentence)))))
+list_json = [json.dumps(x, ensure_ascii=False) for x in tqdm(list_json, total=len(list_json))]
+
+with open(f'../data/backup_1000000/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.json', 'w') as f:
+    for x in list_json:
+       _ = f.write(x + '\n')
