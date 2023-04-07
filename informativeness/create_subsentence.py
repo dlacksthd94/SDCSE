@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 from itertools import chain
+import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', required=False, help='select constituency parser from [base, large]', type=str, choices=['base', 'large'], default='large')
@@ -152,6 +153,7 @@ with open(f'../data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.
 with open(f'../data/backup_1000000/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}_subsentence.pickle', 'rb') as f:
     list_subsentence = pickle.load(f)
 
+list_subsentence = np.random.choice(list_subsentence, len(list_subsentence), replace=False).tolist()
 list_json = list(chain.from_iterable(map(lambda il: [{'text': s, 'group': il[0], 'rank': j} for j, s in enumerate(il[1])], tqdm(enumerate(list_subsentence), total=len(list_subsentence)))))
 list_json = [json.dumps(x, ensure_ascii=False) for x in tqdm(list_json, total=len(list_json))]
 
