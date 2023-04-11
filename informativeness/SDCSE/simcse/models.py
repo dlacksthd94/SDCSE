@@ -52,6 +52,7 @@ class InformativenessNormCorrelation(nn.Module):
     
     def __init__(self):
         super().__init__()
+        self.cos = nn.CosineSimilarity(dim=-1)
     
     def forward(self, pooler_output, rank, group):
         output_norm = torch.norm(pooler_output, dim=-1)
@@ -59,21 +60,41 @@ class InformativenessNormCorrelation(nn.Module):
         rank = rank.squeeze()[:, 0]
         group = group.squeeze()[:, 0]
 
-        norm_rank_group = torch.stack([n1, rank, group], dim=1)
-        unique_g = torch.unique(group)
-        result = torch.empty((unique_g.shape[0], 2))
-        i = 0
-        for g in unique_g:
-            n1_g = norm_rank_group[group == g]
-            nr = n1_g[:, 0].sort().indices
-            r = n1_g[:, 1]
-            corr = self.spearmans_rank_corr(nr, r)
-            result[i, :] = torch.Tensor([corr, r.shape[0]])
-            i += 1
-        result[:, 0][torch.isnan(result[:, 0])] = 0 # replace nan to 0
-        correlation_norm_informativeness = (result[:, 0] * result[:, 1]).sum() / result[:, 1].sum()
-        
-        return - correlation_norm_informativeness
+        loss_norm_informativeness = 0
+        # for n in [n1, n2]:
+        for n in [n1, n2]:
+            # # use correlation
+            # norm_rank_group = torch.stack([n, rank, group], dim=1)
+            # unique_g = torch.unique(group)
+            # result = torch.empty((unique_g.shape[0], 2))
+            # i = 0
+            # for g in unique_g:
+            #     n_g = norm_rank_group[group == g]
+            #     nr = n_g[:, 0].sort().indices
+            #     r = n_g[:, 1]
+            #     corr = self.spearmans_rank_corr(nr, r)
+            #     result[i, :] = torch.Tensor([corr, r.shape[0]])
+            #     i += 1
+            # result[:, 0][torch.isnan(result[:, 0])] = 0 # replace nan to 0
+            # result[:, 0] = 1- result[:, 0] # each group's correlation should be 1, so the loss is (1 - correlation)
+            # loss_temp = (result[:, 0] * result[:, 1]).sum() / result[:, 1].sum()
+            # loss_norm_informativeness += loss_temp
+            
+            # # use MSELoss
+            # norm_rank_group = torch.stack([n, rank, group], dim=1)
+            # unique_g = torch.unique(group)
+            # for g in unique_g:
+            #     n_g = norm_rank_group[group == g]
+            #     nr = n_g[:, 0].sort().indices
+            #     norm_rank_group[group == g, 0] = nr.float()
+            # loss_temp = loss_fct(norm_rank_group[:, 0], norm_rank_group[:, 1])
+            # loss_norm_informativeness += loss_temp
+            
+            # use cosine similarity
+            loss_temp = nn.CosineSimilarity(dim=-1)(n, rank)
+            loss_norm_informativeness += loss_temp
+            
+        return loss_norm_informativeness
     
     def spearmans_rank_corr(self, nr, r):
         # spearman's rank correlation coefficient
@@ -152,6 +173,9 @@ def cl_forward(cls,
     group=None,
     rank=None,
 ):
+    # cls,encoder,position_ids,head_mask,inputs_embeds,labels,output_attentions,output_hidden_states,return_dict,mlm_input_ids,mlm_labels=model,model.bert,None,None,None,None,None,None,None,None,None
+    # attention_mask, group, input_ids, rank, token_type_ids = next(iter(train_dataloader)).values()
+    # input_ids, attention_mask, token_type_ids, rank, group = input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda(), rank.cuda(), group.cuda()
     return_dict = return_dict if return_dict is not None else cls.config.use_return_dict
     ori_input_ids = input_ids
     batch_size = input_ids.size(0)
@@ -205,7 +229,11 @@ def cl_forward(cls,
 
     # Separate representation
     z1, z2 = pooler_output[:,0], pooler_output[:,1]
-
+    
+    if group is not None and rank is not None:
+        z1 = z1[rank[:, 0].squeeze() == 0]
+        z2 = z2[rank[:, 0].squeeze() == 0]
+        
     # Hard negative
     if num_sent == 3:
         z3 = pooler_output[:, 2]
@@ -255,10 +283,10 @@ def cl_forward(cls,
     # self,input,target=loss_fct,cos_sim,labels 
     loss = loss_fct(cos_sim, labels)
     
-    loss_informativeness = cls.infonormcorr(pooler_output, rank, group)
-    
-    loss += cls.model_args.lambda_weight * loss_informativeness
-    
+    if cls.model_args.lambda_weight > 0:
+        loss_informativeness = cls.infonormcorr(pooler_output, rank, group)
+        loss += cls.model_args.lambda_weight * loss_informativeness
+        
     # Calculate loss for MLM
     if mlm_outputs is not None and mlm_labels is not None:
         mlm_labels = mlm_labels.view(-1, mlm_labels.size(-1))
@@ -364,9 +392,6 @@ class BertForCL(BertPreTrainedModel):
                 return_dict=return_dict,
             )
         else:
-            # cls,encoder,position_ids,head_mask,inputs_embeds,labels,output_attentions,output_hidden_states,return_dict,mlm_input_ids,mlm_labels=model,model.bert,None,None,None,None,None,None,None,None,None
-            # attention_mask, group, input_ids, rank, token_type_ids = next(iter(train_dataloader)).values()
-            # input_ids, attention_mask, token_type_ids, rank, group = input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda(), rank.cuda(), group.cuda()
             return cl_forward(self, self.bert,
                 input_ids=input_ids,
                 attention_mask=attention_mask,

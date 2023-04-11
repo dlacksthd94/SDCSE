@@ -118,7 +118,7 @@ class CLTrainer(Trainer):
 
         # Set params for SentEval (fastmode)
         params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
-        params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
+        params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128 * 1000,
                                             'tenacity': 3, 'epoch_size': 2}
 
         se = senteval.engine.SE(params, batcher, prepare)
@@ -294,7 +294,7 @@ class CLTrainer(Trainer):
         train_dataloader = DataLoader(
             self.train_dataset,
             batch_size=self.args.train_batch_size,
-            sampler=None,
+            sampler=None if self.args.local_rank == -1 else DistributedSampler(self.train_dataset, shuffle=False),
             collate_fn=self.data_collator,
             drop_last=self.args.dataloader_drop_last,
             num_workers=self.args.dataloader_num_workers,

@@ -1,81 +1,103 @@
 import os
 import pandas as pd
 import re
-
-ENCODER = 'SimCSE'
-RESULT_FOLDER = 'backup_no_mlm_diff_seed_eval_transfer'
+from itertools import chain
 
 def result_dev(*groupby):
     root_path = os.path.join(os.path.expanduser('~'), 'NLP/PROJECT/GSDS_NLP_sentence-embedding/informativeness/', ENCODER, 'result', RESULT_FOLDER)
     assert os.path.exists(root_path)
 
     list_result = []
-    for batch_size in [64, 128, 256]:
+    for batch_size in [256]:
         for lr in [f'1e-{i}' for i in range(4, 5)]:
             for epoch in range(1, 2):
-                for seed in range(0, 10):
-                    try:
-                        result_path = os.path.join(root_path, f'my-unsup-simcse-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}', 'eval_results.txt')
-                        assert os.path.exists(result_path)
-                        df_temp = pd.read_csv(result_path, sep='=', header=None)
-                        df_temp = df_temp[-4:-2]
-                        df_temp.columns = ['task', 'score']
-                        result = [batch_size, lr, epoch, seed] + df_temp['score'].to_list()
-                        list_result.append(result)
-                    except:
-                        pass
-    df = pd.DataFrame(list_result, columns=['batch_size', 'lr', 'epoch', 'seed', 'sts', 'transfer'])
-    print(df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std']))
-    
+                for max_len in [32]:
+                    list_lambda_weight = ['0e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                    for lambda_weight in list_lambda_weight:
+                        for seed in range(0, 3):
+                            try:
+                                result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}', 'eval_results.txt')
+                                if not os.path.exists(result_path):
+                                    result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}_{max_len}', 'eval_results.txt')
+                                if not os.path.exists(result_path):
+                                    result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}', 'eval_results.txt')
+                                assert os.path.exists(result_path)
+                                df_temp = pd.read_csv(result_path, sep='=', header=None)
+                                df_temp = df_temp[-4:-2]
+                                df_temp.columns = ['task', 'score']
+                                result = [batch_size, lr, epoch, max_len, lambda_weight, seed] + df_temp['score'].to_list()
+                                list_result.append(result)
+                            except:
+                                pass
+    df = pd.DataFrame(list_result, columns=['batch_size', 'lr', 'epoch', 'max_len', 'lambda_weight', 'seed', 'sts', 'transfer'])
+    print(df)
+    df_groupby = df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std'])
+    if df_groupby.index.name == 'lambda_weight':
+        print(df_groupby.loc[list_lambda_weight])
+
+
 def result_eval(*groupby):
     root_path = os.path.join(os.path.expanduser('~'), 'NLP/PROJECT/GSDS_NLP_sentence-embedding/informativeness/result/evaluation', ENCODER.lower(), RESULT_FOLDER)
     assert os.path.exists(root_path)
 
     list_result = []
-    for batch_size in [64, 128, 256]:
+    for batch_size in [256]:
         for lr in [f'1e-{i}' for i in range(4, 5)]:
             for epoch in range(1, 2):
-                for seed in range(0, 10):
-                    try:
-                        result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_wop_{batch_size}_{lr}_{epoch}_{seed}.txt')
-                        assert os.path.exists(result_path)
-                        
-                        with open(result_path, 'r') as f:
-                            text = f.read()
-                        text = re.sub(r'-* fasttest -*', '', text).strip()
-                        index_split = text.find('+\n+')
-                        text1 = text[:index_split + 1]
-                        text2 = text[index_split + 1:].strip()
-                        
-                        def prettytable_to_dataframe(text):
-                            text = text.split('\n')
+                for max_len in [32]:
+                    list_lambda_weight = ['0e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                    for lambda_weight in list_lambda_weight:
+                        for seed in range(0, 3):
+                            try:
+                                result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_wop_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}.txt')
+                                if not os.path.exists(result_path):
+                                    result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_wop_{batch_size}_{lr}_{epoch}_{seed}_{max_len}.txt')
+                                if not os.path.exists(result_path):
+                                    result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_wop_{batch_size}_{lr}_{epoch}_{seed}.txt')
+                                assert os.path.exists(result_path)
+                                
+                                with open(result_path, 'r') as f:
+                                    text = f.read()
+                                text = re.sub(r'-* fasttest -*', '', text).strip()
+                                index_split = text.find('+\n+')
+                                text1 = text[:index_split + 1]
+                                text2 = text[index_split + 1:].strip()
+                                
+                                def prettytable_to_dataframe(text):
+                                    text = text.split('\n')
 
-                            # 헤더 추출
-                            headers = text[1].strip().split('|')[1:-1]
-                            headers = [header.strip() for header in headers]
+                                    # 헤더 추출
+                                    headers = text[1].strip().split('|')[1:-1]
+                                    headers = [header.strip() for header in headers]
 
-                            # 데이터 추출
-                            data = []
-                            for line in text[3:]:
-                                if line.startswith('+') and line.endswith('+'):
-                                    continue
-                                row = line.strip().split('|')[1:-1]
-                                row = [value.strip() for value in row]
-                                data.append(row)
-                            
-                            df = pd.DataFrame(data, columns=headers)
-                            return df
+                                    # 데이터 추출
+                                    data = []
+                                    for line in text[3:]:
+                                        if line.startswith('+') and line.endswith('+'):
+                                            continue
+                                        row = line.strip().split('|')[1:-1]
+                                        row = [value.strip() for value in row]
+                                        data.append(row)
+                                    
+                                    df = pd.DataFrame(data, columns=headers)
+                                    return df
 
-                        df1 = prettytable_to_dataframe(text1)
-                        df2 = prettytable_to_dataframe(text2)
-                        list_score = [df1['Avg.'].squeeze(), df2['Avg.'].squeeze()]
-                        result = [batch_size, lr, epoch, seed] + list(map(float, list_score))
-                        
-                        list_result.append(result)
-                    except:
-                        pass
-    df = pd.DataFrame(list_result, columns=['batch_size', 'lr', 'epoch', 'seed', 'sts', 'transfer'])
-    print(df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std']))
+                                df1 = prettytable_to_dataframe(text1)
+                                df2 = prettytable_to_dataframe(text2)
+                                list_score = [df1['Avg.'].squeeze(), df2['Avg.'].squeeze()]
+                                result = [batch_size, lr, epoch, max_len, lambda_weight, seed] + list(map(float, list_score))
+                                
+                                list_result.append(result)
+                            except:
+                                pass
+    df = pd.DataFrame(list_result, columns=['batch_size', 'lr', 'epoch', 'max_len', 'lambda_weight', 'seed', 'sts', 'transfer'])
+    print(df)
+    df_groupby = df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std'])
+    if df_groupby.index.name == 'lambda_weight':
+        print(df_groupby.loc[list_lambda_weight])
 
-result_dev('batch_size')
-result_eval('batch_size')
+ENCODER = 'SDCSE'
+RESULT_FOLDER = 'backup_eval_0rk'
+
+result_dev('lambda_weight')
+result_eval('lambda_weight')

@@ -127,9 +127,10 @@ class ModelArguments:
     lambda_weight: float = field(
         default=0.1,
         metadata={
-            "help": "Weight for lambda, which is the coefficient of informative-norm loss."
+            "help": "Weight for lambda, which is the coefficient of informativeness-norm loss. ()"
         }
     )
+    
 
 @dataclass
 class DataTrainingArguments:
@@ -250,42 +251,42 @@ class OurTrainingArguments(TrainingArguments):
 
         return device
 
-#######################
-BATCH_SIZE=256
-LR='1e-4'
-EPOCH=1
-SEED=0
-MAX_LEN=32
-LAMBDA=0.1
-sys.argv = [
-    'train.py',
-    '--model_name_or_path', 'bert-base-uncased',
-    # '--model_name_or_path', 'result/my-unsup-simcse-bert-base-uncased_256_1e-4_1_0_32',
-    # '--train_file', 'data/wiki1m_for_simcse.txt',
-    '--train_file', '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
-    '--output_dir', f'result/my-unsup-sdcse-bert-base-uncased_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
-    '--num_train_epochs', str(EPOCH),
-    '--per_device_train_batch_size', str(BATCH_SIZE),
-    '--learning_rate', LR,
-    '--max_seq_length', str(MAX_LEN),
-    '--evaluation_strategy', 'steps',
-    '--metric_for_best_model', 'stsb_spearman',
-    '--load_best_model_at_end',
-    '--eval_steps', '32',
-    '--pooler_type', 'cls_before_pooler',
-    '--overwrite_output_dir',
-    '--temp', '0.05',
-    '--do_train',
-    '--do_eval',
-    # '--eval_transfer',
-    '--fp16',
-    '--seed', str(SEED),
-    # '--no_cuda',
-    '--no_remove_unused_columns',
-    '--lambda_weight', str(LAMBDA),
-]
+# #######################
+# BATCH_SIZE=256
+# LR='1e-4'
+# EPOCH=1
+# SEED=0
+# MAX_LEN=32
+# LAMBDA=0.1
+# sys.argv = [
+#     'train.py',
+#     '--model_name_or_path', 'bert-base-uncased',
+#     # '--model_name_or_path', 'result/my-unsup-simcse-bert-base-uncased_256_1e-4_1_0_32',
+#     '--train_file', 'data/wiki1m_for_simcse.txt',
+#     # '--train_file', '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
+#     '--output_dir', f'result/my-unsup-sdcse-bert-base-uncased_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
+#     '--num_train_epochs', str(EPOCH),
+#     '--per_device_train_batch_size', str(BATCH_SIZE),
+#     '--learning_rate', LR,
+#     '--max_seq_length', str(MAX_LEN),
+#     '--evaluation_strategy', 'steps',
+#     '--metric_for_best_model', 'stsb_spearman',
+#     '--load_best_model_at_end',
+#     '--eval_steps', '32',
+#     '--pooler_type', 'cls_before_pooler',
+#     '--overwrite_output_dir',
+#     '--temp', '0.05',
+#     '--do_train',
+#     '--do_eval',
+#     # '--eval_transfer',
+#     '--fp16',
+#     '--seed', str(SEED),
+#     # '--no_cuda',
+#     '--no_remove_unused_columns',
+#     '--lambda_weight', str(LAMBDA),
+# ]
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-#######################
+# #######################
 
 # def main():
 # See all possible arguments in src/transformers/training_args.py
