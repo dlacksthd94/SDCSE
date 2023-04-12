@@ -18,7 +18,7 @@ export OMP_NUM_THREADS=8
 # If you only want to use one card, uncomment the following line and comment the line with "torch.distributed.launch"
 # python train.py \
 
-for BATCH_SIZE in 256; do
+for BATCH_SIZE in 128; do
     for LR in 1e-4; do
         for EPOCH in 1; do
             for SEED in 0; do

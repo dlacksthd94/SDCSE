@@ -182,6 +182,20 @@ class DataTrainingArguments:
         default=0.15, 
         metadata={"help": "Ratio of tokens to mask for MLM (only effective if --do_mlm)"}
     )
+    
+    # SDCSE's arguments
+    perturbation_type: str = field(
+        default=None, 
+        metadata={"help": "The type of perturbation applied to sentence tokens."}
+    )
+    perturbation_num: int = field(
+        default=0, 
+        metadata={"help": "How many pertrubations for each pair of sentence."}
+    )
+    perturbation_step: int = field(
+        default=0, 
+        metadata={"help": "The step of perturbations applied to each sentence."}
+    )
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
@@ -190,6 +204,9 @@ class DataTrainingArguments:
             if self.train_file is not None:
                 extension = self.train_file.split(".")[-1]
                 assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, a json or a txt file."
+                
+        if self.perturbation_type is not None:
+            assert self.perturbation_type in ['constituency_parsing', 'attention_mask', 'unk_token', 'mask_token', 'pad_token']
 
 
 @dataclass
@@ -252,11 +269,14 @@ class OurTrainingArguments(TrainingArguments):
         return device
 
 # #######################
-# BATCH_SIZE=256
+# BATCH_SIZE=128
 # LR='1e-4'
 # EPOCH=1
 # SEED=0
 # MAX_LEN=32
+# PERTURB_TYPE='mask_token'
+# PERTURB_NUM=1
+# PERTURB_STEP=1
 # LAMBDA=0.1
 # sys.argv = [
 #     'train.py',
@@ -284,6 +304,9 @@ class OurTrainingArguments(TrainingArguments):
 #     # '--no_cuda',
 #     '--no_remove_unused_columns',
 #     '--lambda_weight', str(LAMBDA),
+#     '--perturbation_type', str(PERTURB_TYPE),
+#     '--perturbation_num', str(PERTURB_NUM),
+#     '--perturbation_step', str(PERTURB_STEP), 
 # ]
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # #######################
@@ -467,6 +490,7 @@ def prepare_features(examples):
             examples[sent1_cname][idx] = " "
     
     sentences = examples[sent0_cname] + examples[sent1_cname]
+    sentences *= data_args.perturbation_num + 1
 
     # If hard negative exists
     if sent2_cname is not None:
@@ -488,7 +512,8 @@ def prepare_features(examples):
             features[key] = [[sent_features[key][i], sent_features[key][i+total], sent_features[key][i+total*2]] for i in range(total)]
     else:
         for key in sent_features:
-            features[key] = [[sent_features[key][i], sent_features[key][i+total]] for i in range(total)]
+            # features[key] = [[sent_features[key][i], sent_features[key][i+total]] for i in range(total)]
+            features[key] = [[sent_features[key][i + total * j] for j in range((data_args.perturbation_num + 1) * 2)] for i in range(total)]
     
     if examples.get('group'):
         features['group'] = [[[x]] * 2 for x in examples['group']]
@@ -507,6 +532,7 @@ if training_args.do_train:
         load_from_cache_file=not data_args.overwrite_cache,
     )
 next(iter(train_dataset))
+# features=train_dataset
 
 # Data collator
 @dataclass
@@ -540,6 +566,11 @@ class OurDataCollatorWithPadding:
         )
         if model_args.do_mlm:
             batch["mlm_input_ids"], batch["mlm_labels"] = self.mask_tokens(batch["input_ids"])
+        
+        if data_args.perturbation_type is not None:
+            # inputs=batch["input_ids"]
+            self.perturbation(inputs=batch["input_ids"], perturbation_type=data_args.perturbation_type)
+            # inputs[:10][:10]
 
         batch = {k: batch[k].view(bs, num_sent, -1) if k in special_keys else batch[k].view(bs, num_sent, -1)[:, 0] for k in batch}
 
@@ -585,6 +616,36 @@ class OurDataCollatorWithPadding:
 
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
+    
+    def perturbation(
+        self, inputs: torch.Tensor, perturbation_type: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original.
+        """
+        if data_args.perturbation_type == 'unk_token':
+            perturbation_token_id = self.tokenizer.unk_token_id
+        elif data_args.perturbation_type == 'mask_token':
+            perturbation_token_id = self.tokenizer.mask_token_id
+        elif data_args.perturbation_type == 'pad_token':
+            perturbation_token_id = self.tokenizer.pad_token_id
+        
+        special_tokens_mask = [
+            self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in inputs[::(data_args.perturbation_num + 1) * 2].tolist()
+        ]
+        special_tokens_mask = (~torch.tensor(special_tokens_mask, dtype=torch.bool)).float()
+        total_perturbation_num = data_args.perturbation_num * data_args.perturbation_step
+        condition = special_tokens_mask.sum(dim=-1) == 0
+        special_tokens_mask = torch.where(condition[:, None], torch.cat([torch.ones((special_tokens_mask.shape[0], 1)), special_tokens_mask[:, 1:]], dim=1), special_tokens_mask) # a subset of `special_tokens_mask` where all elements are 0 raises an error, so fill their 2nd index with 1.
+        list_randint = torch.multinomial(special_tokens_mask, total_perturbation_num, replacement=False)
+        
+        size_sentence_pair = (data_args.perturbation_num + 1) * 2
+        for i in range(data_args.perturbation_num):
+            for j in range((i + 1) * data_args.perturbation_step):
+                target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
+                inputs[(i + 1) * 2::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+                inputs[(i + 1) * 2 + 1::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+        return
 
 data_collator = default_data_collator if data_args.pad_to_max_length else OurDataCollatorWithPadding(tokenizer)
 

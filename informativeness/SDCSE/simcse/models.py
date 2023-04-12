@@ -54,46 +54,52 @@ class InformativenessNormCorrelation(nn.Module):
         super().__init__()
         self.cos = nn.CosineSimilarity(dim=-1)
     
-    def forward(self, pooler_output, rank, group):
-        output_norm = torch.norm(pooler_output, dim=-1)
-        n1, n2 = output_norm[:, 0], output_norm[:, 1]
-        rank = rank.squeeze()[:, 0]
-        group = group.squeeze()[:, 0]
-
+    def forward(self, pooler_output, rank=None, group=None):
         loss_norm_informativeness = 0
-        # for n in [n1, n2]:
-        for n in [n1, n2]:
-            # # use correlation
-            # norm_rank_group = torch.stack([n, rank, group], dim=1)
-            # unique_g = torch.unique(group)
-            # result = torch.empty((unique_g.shape[0], 2))
-            # i = 0
-            # for g in unique_g:
-            #     n_g = norm_rank_group[group == g]
-            #     nr = n_g[:, 0].sort().indices
-            #     r = n_g[:, 1]
-            #     corr = self.spearmans_rank_corr(nr, r)
-            #     result[i, :] = torch.Tensor([corr, r.shape[0]])
-            #     i += 1
-            # result[:, 0][torch.isnan(result[:, 0])] = 0 # replace nan to 0
-            # result[:, 0] = 1- result[:, 0] # each group's correlation should be 1, so the loss is (1 - correlation)
-            # loss_temp = (result[:, 0] * result[:, 1]).sum() / result[:, 1].sum()
-            # loss_norm_informativeness += loss_temp
-            
-            # # use MSELoss
-            # norm_rank_group = torch.stack([n, rank, group], dim=1)
-            # unique_g = torch.unique(group)
-            # for g in unique_g:
-            #     n_g = norm_rank_group[group == g]
-            #     nr = n_g[:, 0].sort().indices
-            #     norm_rank_group[group == g, 0] = nr.float()
-            # loss_temp = loss_fct(norm_rank_group[:, 0], norm_rank_group[:, 1])
-            # loss_norm_informativeness += loss_temp
-            
-            # use cosine similarity
-            loss_temp = nn.CosineSimilarity(dim=-1)(n, rank)
-            loss_norm_informativeness += loss_temp
-            
+        if rank is not None and group is not None:
+            output_norm = torch.norm(pooler_output, dim=-1)
+            n1, n2 = output_norm[:, 0], output_norm[:, 1]
+            rank = rank.squeeze()[:, 0]
+            group = group.squeeze()[:, 0]
+            for n in [n1, n2]:
+                # # use correlation
+                # norm_rank_group = torch.stack([n, rank, group], dim=1)
+                # unique_g = torch.unique(group)
+                # result = torch.empty((unique_g.shape[0], 2))
+                # i = 0
+                # for g in unique_g:
+                #     n_g = norm_rank_group[group == g]
+                #     nr = n_g[:, 0].sort().indices
+                #     r = n_g[:, 1]
+                #     corr = self.spearmans_rank_corr(nr, r)
+                #     result[i, :] = torch.Tensor([corr, r.shape[0]])
+                #     i += 1
+                # result[:, 0][torch.isnan(result[:, 0])] = 0 # replace nan to 0
+                # result[:, 0] = 1- result[:, 0] # each group's correlation should be 1, so the loss is (1 - correlation)
+                # loss_temp = (result[:, 0] * result[:, 1]).sum() / result[:, 1].sum()
+                # loss_norm_informativeness += loss_temp
+                
+                # # use MSELoss
+                # norm_rank_group = torch.stack([n, rank, group], dim=1)
+                # unique_g = torch.unique(group)
+                # for g in unique_g:
+                #     n_g = norm_rank_group[group == g]
+                #     nr = n_g[:, 0].sort().indices
+                #     norm_rank_group[group == g, 0] = nr.float()
+                # loss_temp = loss_fct(norm_rank_group[:, 0], norm_rank_group[:, 1])
+                # loss_norm_informativeness += loss_temp
+                
+                # use cosine similarity
+                loss_temp = nn.CosineSimilarity(dim=-1)(n, rank)
+                loss_norm_informativeness += loss_temp
+        else:
+            num_sent = pooler_output.size(1)
+            n1 = pooler_output[:, range(0, num_sent, 2), :].norm(dim=-1)
+            # n2 = pooler_output[:, range(1, num_sent + 1, 2), :].norm(dim=-1)
+            loss_norm_informativeness = F.l1_loss(n1, n1.sort()[0])
+            # loss_norm_informativeness = F.smooth_l1_loss(n1, n1.sort()[0])
+            # loss_norm_informativeness = F.mse_loss(n1, n1.sort()[0])
+                
         return loss_norm_informativeness
     
     def spearmans_rank_corr(self, nr, r):
@@ -174,8 +180,8 @@ def cl_forward(cls,
     rank=None,
 ):
     # cls,encoder,position_ids,head_mask,inputs_embeds,labels,output_attentions,output_hidden_states,return_dict,mlm_input_ids,mlm_labels=model,model.bert,None,None,None,None,None,None,None,None,None
-    # attention_mask, group, input_ids, rank, token_type_ids = next(iter(train_dataloader)).values()
-    # input_ids, attention_mask, token_type_ids, rank, group = input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda(), rank.cuda(), group.cuda()
+    # attention_mask, input_ids, token_type_ids = next(iter(train_dataloader)).values() # attention_mask, group, input_ids, rank, token_type_ids = next(iter(train_dataloader)).values()
+    # input_ids, attention_mask, token_type_ids = input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda() # input_ids, attention_mask, token_type_ids, rank, group = input_ids.cuda(), attention_mask.cuda(), token_type_ids.cuda(), rank.cuda(), group.cuda()
     return_dict = return_dict if return_dict is not None else cls.config.use_return_dict
     ori_input_ids = input_ids
     batch_size = input_ids.size(0)
@@ -228,65 +234,71 @@ def cl_forward(cls,
         pooler_output = cls.mlp(pooler_output)
 
     # Separate representation
-    z1, z2 = pooler_output[:,0], pooler_output[:,1]
+    # z1, z2 = pooler_output[:,0], pooler_output[:,1]
+    dict_z = {}
+    for i in range(num_sent):
+        dict_z[f'z{i + 1}'] = pooler_output[:, i] 
     
     if group is not None and rank is not None:
-        z1 = z1[rank[:, 0].squeeze() == 0]
-        z2 = z2[rank[:, 0].squeeze() == 0]
+        dict_z['z1'] = dict_z['z1'][rank[:, 0].squeeze() == 0]
+        dict_z['z2'] = dict_z['z2'][rank[:, 0].squeeze() == 0]
         
-    # Hard negative
-    if num_sent == 3:
-        z3 = pooler_output[:, 2]
+    # # Hard negative
+    # if num_sent == 3:
+    #     z3 = pooler_output[:, 2]
 
     # Gather all embeddings if using distributed training
     if dist.is_initialized() and cls.training:
         # Gather hard negative
-        if num_sent >= 3:
-            z3_list = [torch.zeros_like(z3) for _ in range(dist.get_world_size())]
-            dist.all_gather(tensor_list=z3_list, tensor=z3.contiguous())
-            z3_list[dist.get_rank()] = z3
-            z3 = torch.cat(z3_list, 0)
+        # if num_sent >= 3:
+        #     z3_list = [torch.zeros_like(z3) for _ in range(dist.get_world_size())]
+        #     dist.all_gather(tensor_list=z3_list, tensor=z3.contiguous())
+        #     z3_list[dist.get_rank()] = z3
+        #     z3 = torch.cat(z3_list, 0)
 
         # Dummy vectors for allgather
-        z1_list = [torch.zeros_like(z1) for _ in range(dist.get_world_size())]
-        z2_list = [torch.zeros_like(z2) for _ in range(dist.get_world_size())]
+        dict_z_list = {}
+        for i in range(num_sent):
+            dict_z_list[f'z{i + 1}_list'] = [torch.zeros_like(dict_z[f'z{i + 1}']) for _ in range(dist.get_world_size())]
+        
         # Allgather
-        dist.all_gather(tensor_list=z1_list, tensor=z1.contiguous())
-        dist.all_gather(tensor_list=z2_list, tensor=z2.contiguous())
-
+        for i in range(num_sent):
+            dist.all_gather(tensor_list=dict_z_list[f'z{i + 1}_list'], tensor=dict_z[f'z{i + 1}'].contiguous())
+        
         # Since allgather results do not have gradients, we replace the
         # current process's corresponding embeddings with original tensors
-        z1_list[dist.get_rank()] = z1
-        z2_list[dist.get_rank()] = z2
-        # Get full batch embeddings: (bs x N, hidden)
-        z1 = torch.cat(z1_list, 0)
-        z2 = torch.cat(z2_list, 0)
+        for i in range(num_sent):
+            dict_z_list[f'z{i + 1}_list'][dist.get_rank()] = dict_z[f'z{i + 1}']
 
-    cos_sim = cls.sim(z1.unsqueeze(1), z2.unsqueeze(0))
-    # Hard negative
-    if num_sent >= 3:
-        z1_z3_cos = cls.sim(z1.unsqueeze(1), z3.unsqueeze(0))
-        cos_sim = torch.cat([cos_sim, z1_z3_cos], 1)
+        # Get full batch embeddings: (bs x N, hidden)
+        for i in range(num_sent):
+            dict_z[f'z{i + 1}'] = torch.cat(dict_z_list[f'z{i + 1}_list'], 0)
+        
+    cos_sim = cls.sim(dict_z['z1'].unsqueeze(1), dict_z['z2'].unsqueeze(0))
+    # # Hard negative
+    # if num_sent >= 3:
+    #     z1_z3_cos = cls.sim(z1.unsqueeze(1), z3.unsqueeze(0))
+    #     cos_sim = torch.cat([cos_sim, z1_z3_cos], 1)
 
     labels = torch.arange(cos_sim.size(0)).long().to(cls.device)
     loss_fct = nn.CrossEntropyLoss()
 
-    # Calculate loss with hard negatives
-    if num_sent == 3:
-        # Note that weights are actually logits of weights
-        z3_weight = cls.model_args.hard_negative_weight
-        weights = torch.tensor(
-            [[0.0] * (cos_sim.size(-1) - z1_z3_cos.size(-1)) + [0.0] * i + [z3_weight] + [0.0] * (z1_z3_cos.size(-1) - i - 1) for i in range(z1_z3_cos.size(-1))]
-        ).to(cls.device)
-        cos_sim = cos_sim + weights
+    # # Calculate loss with hard negatives
+    # if num_sent == 3:
+    #     # Note that weights are actually logits of weights
+    #     z3_weight = cls.model_args.hard_negative_weight
+    #     weights = torch.tensor(
+    #         [[0.0] * (cos_sim.size(-1) - z1_z3_cos.size(-1)) + [0.0] * i + [z3_weight] + [0.0] * (z1_z3_cos.size(-1) - i - 1) for i in range(z1_z3_cos.size(-1))]
+    #     ).to(cls.device)
+    #     cos_sim = cos_sim + weights
 
     # self,input,target=loss_fct,cos_sim,labels 
-    loss = loss_fct(cos_sim, labels)
+    loss = loss_fct(cos_sim, labels)# + loss_fct(cos_sim_2, labels)
     
     if cls.model_args.lambda_weight > 0:
         loss_informativeness = cls.infonormcorr(pooler_output, rank, group)
         loss += cls.model_args.lambda_weight * loss_informativeness
-        
+            
     # Calculate loss for MLM
     if mlm_outputs is not None and mlm_labels is not None:
         mlm_labels = mlm_labels.view(-1, mlm_labels.size(-1))
@@ -299,7 +311,7 @@ def cl_forward(cls,
         return ((loss,) + output) if loss is not None else output
     return SequenceClassifierOutput(
         loss=loss,
-        logits=cos_sim,
+        logits=(cos_sim),
         hidden_states=outputs.hidden_states,
         attentions=outputs.attentions,
     )

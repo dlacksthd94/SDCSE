@@ -106,24 +106,21 @@ def experiment(text, n_sim, perturbate_type):
     return df.astype(float)
 
 text = 'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.' # 14.1141
-df1 = experiment(text, n_sim=1000, perturbate_type=['att', 'unk', 'mask', 'pad'])
-df1.loc[('argsort', 'argsort'), :] = df1.apply(lambda row: row.argsort(), axis=1).sum()
+df1 = experiment(text, n_sim=100, perturbate_type=['att', 'unk', 'mask', 'pad'])
 df1.loc[('mean', 'all'), :] = df1[:-1].mean()
 df1
 df1.astype(float).groupby('n_perturbate').mean()[:-2]
 df1.astype(float).groupby('step').mean()[:-2]
 
 text = 'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework.' # 13.901
-df2 = experiment(text, n_sim=1000, perturbate_type=['att', 'unk', 'mask', 'pad'])
-df2.loc[('argsort', 'argsort'), :] = df2.apply(lambda row: row.argsort(), axis=1).sum()
+df2 = experiment(text, n_sim=100, perturbate_type=['att', 'unk', 'mask', 'pad'])
 df2.loc[('mean', 'all'), :] = df2[:-1].mean()
 df2
 df2.astype(float).groupby('n_perturbate').mean()[:-2]
 df2.astype(float).groupby('step').mean()[:-2]
 
 text = 'Unsupervised SimCSE simply takes an input sentence' # 13.7006
-df3 = experiment(text, n_sim=1000, perturbate_type=['att', 'unk', 'mask', 'pad'])
-df3.loc[('argsort', 'argsort'), :] = df3.apply(lambda row: row.argsort(), axis=1).sum()
+df3 = experiment(text, n_sim=100, perturbate_type=['att', 'unk', 'mask', 'pad'])
 df3.loc[('mean', 'all'), :] = df3[:-1].mean()
 df3
 df3.astype(float).groupby('n_perturbate').mean()[:-2]

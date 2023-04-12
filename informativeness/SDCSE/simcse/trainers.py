@@ -279,26 +279,18 @@ class CLTrainer(Trainer):
         train_dataset_is_sized = isinstance(self.train_dataset, collections.abc.Sized)
         
         # Data loader and number of training steps
-        # if 'group' in self.train_dataset.features and 'rank' in self.train_dataset.features:
-        #     train_dataloader = DataLoader(
-        #         self.train_dataset,
-        #         batch_size=self.args.train_batch_size,
-        #         sampler=None,
-        #         collate_fn=self.data_collator,
-        #         drop_last=self.args.dataloader_drop_last,
-        #         num_workers=self.args.dataloader_num_workers,
-        #     )
-        # else:
-        #     train_dataloader = self.get_train_dataloader()
-        
-        train_dataloader = DataLoader(
-            self.train_dataset,
-            batch_size=self.args.train_batch_size,
-            sampler=None if self.args.local_rank == -1 else DistributedSampler(self.train_dataset, shuffle=False),
-            collate_fn=self.data_collator,
-            drop_last=self.args.dataloader_drop_last,
-            num_workers=self.args.dataloader_num_workers,
-        )
+        if 'group' in self.train_dataset.features and 'rank' in self.train_dataset.features:
+            train_dataloader = DataLoader(
+                self.train_dataset,
+                batch_size=self.args.train_batch_size,
+                sampler=None if self.args.local_rank == -1 else DistributedSampler(self.train_dataset, shuffle=False),
+                collate_fn=self.data_collator,
+                drop_last=self.args.dataloader_drop_last,
+                num_workers=self.args.dataloader_num_workers,
+            )
+        else:
+            train_dataloader = self.get_train_dataloader()
+        # next(iter(train_dataloader))['input_ids'][0:3, :10]
         
         # Setting up training control variables:
         # number of training epochs: num_train_epochs
@@ -482,7 +474,6 @@ class CLTrainer(Trainer):
                     with model.no_sync():
                         tr_loss += self.training_step(model, inputs)
                 else:
-                    # inputs=next(iter(epoch_iterator))
                     tr_loss += self.training_step(model, inputs)
                 self._total_flos += self.floating_point_ops(inputs)
 

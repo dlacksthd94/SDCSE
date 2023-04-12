@@ -1,16 +1,18 @@
 *.pickle
 __pycache__/
 .ipynb_checkpoints/
-data/
-model/
-SentEval/
 *.out
 *.png
 *.bin
 *.json
 *.csv
 scidocs
-result
+
+# folders
+result/
+data/
+model/
+SentEval/
 
 # encoders
 SimCSE
