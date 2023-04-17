@@ -34,7 +34,7 @@ from transformers.tokenization_utils_base import BatchEncoding, PaddingStrategy,
 from transformers.trainer_utils import is_main_process
 from transformers.data.data_collator import DataCollatorForLanguageModeling
 from transformers.file_utils import cached_property, torch_required, is_torch_available, is_torch_tpu_available
-from simcse.models import RobertaForCL, BertForCL
+from simcse.models import RobertaForCL, BertForCL, CustomDropout
 from simcse.trainers import CLTrainer
 
 logger = logging.getLogger(__name__)
@@ -215,7 +215,7 @@ class DataTrainingArguments:
                 assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, a json or a txt file."
                 
         if self.perturbation_type is not None:
-            assert self.perturbation_type in ['constituency_parsing', 'attention_mask', 'unk_token', 'mask_token', 'pad_token', 'none']
+            assert self.perturbation_type in ['constituency_parsing', 'unk_token', 'mask_token', 'pad_token', 'dropout', 'none']
             if self.perturbation_type == 'none':
                 self.perturbation_type = None
             
@@ -285,9 +285,9 @@ class OurTrainingArguments(TrainingArguments):
 # EPOCH=1
 # SEED=0
 # MAX_LEN=32
-# PERTURB_TYPE='mask_token'
+# PERTURB_TYPE='dropout'
 # PERTURB_NUM=1
-# PERTURB_STEP=1
+# PERTURB_STEP=3
 # LAMBDA=0.1
 # sys.argv = [
 #     'train.py',
@@ -458,6 +458,27 @@ else:
 
 model.resize_token_embeddings(len(tokenizer))
 
+if data_args.perturbation_type == 'dropout':
+    dict_dropout = {f'dropout_{i}': round(0.1 + 0.1 * data_args.perturbation_step * i, 4) for i in range(data_args.perturbation_num + 1)}
+    dropout_layer_names = []
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Dropout):
+            dropout_layer_names.append(name)
+    dropout_layer_names
+
+    # 드롭아웃 레이어 변경
+    custom_dropout = CustomDropout(dict_dropout, data_args.perturbation_num)
+    for name in dropout_layer_names:
+        if name.startswith('bert.embeddings'):
+            model.bert.embeddings.dropout = custom_dropout
+        elif name.startswith('bert.encoder'):
+            n = int(name.split('.')[3])
+            model.bert.encoder.layer[n].attention.self.dropout = custom_dropout
+            model.bert.encoder.layer[n].attention.output.dropout = custom_dropout
+            model.bert.encoder.layer[n].output.dropout = custom_dropout
+    model
+
+
 # Prepare features
 column_names = datasets["train"].column_names
 sent2_cname = None
@@ -543,7 +564,7 @@ if training_args.do_train:
         load_from_cache_file=not data_args.overwrite_cache,
     )
 next(iter(train_dataset))
-# features=train_dataset
+
 
 # Data collator
 @dataclass
@@ -578,7 +599,7 @@ class OurDataCollatorWithPadding:
         if model_args.do_mlm:
             batch["mlm_input_ids"], batch["mlm_labels"] = self.mask_tokens(batch["input_ids"])
         
-        if data_args.perturbation_type is not None:
+        if data_args.perturbation_type not in [None, 'dropout']:
             # inputs=batch["input_ids"]
             self.perturbation(inputs=batch["input_ids"], perturbation_type=data_args.perturbation_type)
             # inputs[:10][:10]

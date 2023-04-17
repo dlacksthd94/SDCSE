@@ -155,6 +155,20 @@ class Pooler(nn.Module):
             raise NotImplementedError
 
 
+class CustomDropout(nn.Module):
+    def __init__(self, dict_dropout, perturbation_num):
+        super(CustomDropout, self).__init__()
+        self.perturbation_num = perturbation_num
+        for i in range(perturbation_num + 1):
+            setattr(self, f'dropout_{i}', nn.Dropout(dict_dropout[f'dropout_{i}']))
+        
+    def forward(self, x):
+        out = torch.zeros_like(x)
+        for i in range(self.perturbation_num + 1):
+            out[i::self.perturbation_num + 1] = getattr(self, f'dropout_{i}')(x[i::self.perturbation_num + 1])
+        return out
+
+
 def cl_init(cls, config):
     """
     Contrastive learning class init function.

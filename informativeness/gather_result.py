@@ -118,4 +118,4 @@ ENCODER = 'SDCSE'
 RESULT_FOLDER = 'backup_eval_token_sim1'
 
 result_dev('loss_type', 'perturb_type', 'perturb_num', 'perturb_step')[1]
-result_eval('perturb_type', 'pooler')[1]
+result_eval('pooler')[1]
