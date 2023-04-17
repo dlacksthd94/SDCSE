@@ -50,9 +50,10 @@ class InformativenessNormCorrelation(nn.Module):
     Spearman's rank correlation between the sentences' vector norm and sentence informativeness
     """
     
-    def __init__(self):
+    def __init__(self, loss_type):
         super().__init__()
         self.cos = nn.CosineSimilarity(dim=-1)
+        self.loss_type = loss_type
     
     def forward(self, pooler_output, rank=None, group=None):
         loss_norm_informativeness = 0
@@ -96,9 +97,13 @@ class InformativenessNormCorrelation(nn.Module):
             num_sent = pooler_output.size(1)
             n1 = pooler_output[:, range(0, num_sent, 2), :].norm(dim=-1)
             # n2 = pooler_output[:, range(1, num_sent + 1, 2), :].norm(dim=-1)
-            loss_norm_informativeness = F.l1_loss(n1, n1.sort()[0])
-            # loss_norm_informativeness = F.smooth_l1_loss(n1, n1.sort()[0])
-            # loss_norm_informativeness = F.mse_loss(n1, n1.sort()[0])
+            
+            if self.loss_type == 'l1':
+                loss_norm_informativeness = F.l1_loss(n1, n1.sort()[0])
+            elif self.loss_type == 'sl1':
+                loss_norm_informativeness = F.smooth_l1_loss(n1, n1.sort()[0])
+            elif self.loss_type == 'mse':
+                loss_norm_informativeness = F.mse_loss(n1, n1.sort()[0])
                 
         return loss_norm_informativeness
     
@@ -159,7 +164,7 @@ def cl_init(cls, config):
     if cls.model_args.pooler_type == "cls":
         cls.mlp = MLPLayer(config)
     cls.sim = Similarity(temp=cls.model_args.temp)
-    cls.infonormcorr = InformativenessNormCorrelation()
+    cls.infonormcorr = InformativenessNormCorrelation(cls.model_args.loss_type)
     cls.init_weights()
 
 def cl_forward(cls,

@@ -127,9 +127,18 @@ class ModelArguments:
     lambda_weight: float = field(
         default=0.1,
         metadata={
-            "help": "Weight for lambda, which is the coefficient of informativeness-norm loss. ()"
+            "help": "Weight for lambda, which is the coefficient of informativeness-norm loss."
         }
     )
+    loss_type: str = field(
+        default='l1', 
+        metadata={"help": "The type of loss function."}
+    )
+    
+    def __post_init__(self):
+        if self.loss_type is not None:
+            assert self.loss_type in ['l1', 'sl1', 'mse']
+
     
 
 @dataclass
@@ -206,8 +215,10 @@ class DataTrainingArguments:
                 assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, a json or a txt file."
                 
         if self.perturbation_type is not None:
-            assert self.perturbation_type in ['constituency_parsing', 'attention_mask', 'unk_token', 'mask_token', 'pad_token']
-
+            assert self.perturbation_type in ['constituency_parsing', 'attention_mask', 'unk_token', 'mask_token', 'pad_token', 'none']
+            if self.perturbation_type == 'none':
+                self.perturbation_type = None
+            
 
 @dataclass
 class OurTrainingArguments(TrainingArguments):

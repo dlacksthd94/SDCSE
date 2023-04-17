@@ -48,6 +48,8 @@ def main():
             #          'SICKRelatedness', 'STSBenchmark'], 
             default=['STS12'],
             help="Tasks to evaluate on. If '--task_set' is specified, this will be overridden")
+    parser.add_argument("--gpu_id", type=int, default=0,
+            help="GPU id to use.")
     
     ### arguments only for PromCSE 
     parser.add_argument("--pooler_type", type=str, 
@@ -129,7 +131,7 @@ def main():
     else:
         model = AutoModel.from_pretrained(args.model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{args.gpu_id}" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     
     # Set up the tasks
