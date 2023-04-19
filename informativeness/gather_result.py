@@ -10,40 +10,40 @@ def result_dev(*groupby):
     assert os.path.exists(root_path)
 
     list_result = []
-    for batch_size in [128]:
+    for bs in [128]:
         for lr in [f'1e-{i}' for i in range(4, 5)]:
             for epoch in range(1, 2):
                 for max_len in [32]:
-                    list_lambda_weight = ['0e-0'] + [f'1e-{i}' for i in range(0, 1)]
-                    for lambda_weight in list_lambda_weight:
-                        for perturb_type in ['mask_token', 'unk_token', 'pad_token']:
-                            for perturb_num in range(1, 4):
-                                for perturb_step in range(1, 4):
+                    list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
+                    for lambda_w in list_lambda_w:
+                        for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
+                            for pt_num in range(1, 4):
+                                for pt_step in range(1, 4):
                                     for seed in range(0, 1):
-                                        for loss_type in ['l1', 'sl1', 'mse']:
+                                        for loss in ['l1', 'sl1', 'mse']:
                                             for pooler in ['wp', 'wop']:
                                                 for metric in ['stsb', 'sickr', 'sts', 'transfer']:
                                                     try:
-                                                        result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}_{perturb_type}_{perturb_num}_{perturb_step}_{loss_type}_{pooler}_{metric}', 'eval_results.txt')
+                                                        result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}', 'eval_results.txt')
                                                         if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}', 'eval_results.txt')
+                                                            result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}', 'eval_results.txt')
                                                         if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}_{max_len}', 'eval_results.txt')
+                                                            result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{bs}_{lr}_{epoch}_{seed}_{max_len}', 'eval_results.txt')
                                                         if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}', 'eval_results.txt')
+                                                            result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{bs}_{lr}_{epoch}_{seed}', 'eval_results.txt')
                                                         assert os.path.exists(result_path)
                                                         df_temp = pd.read_csv(result_path, sep='=', header=None)
-                                                        df_temp = df_temp[-4:-2]
+                                                        df_temp = df_temp[-4:-2].reset_index(drop=True)
                                                         df_temp.columns = ['task', 'score']
-                                                        result = [batch_size, lr, epoch, max_len, lambda_weight, perturb_type, perturb_num, perturb_step, loss_type, pooler, metric, seed] + df_temp['score'].to_list()
+                                                        result = [bs, lr, epoch, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, seed, round(df_temp['score'][0] * 100, 2), round(df_temp['score'][1], 2)]
                                                         list_result.append(result)
                                                     except:
-                                                        os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}_{perturb_type}_{perturb_num}_{perturb_step}_{loss_type}_{pooler}', 'eval_results.txt')
+                                                        os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-bert-base-uncased_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}', 'eval_results.txt')
                                                         pass
-    df = pd.DataFrame(list_result, columns=['batch_size', 'lr', 'epoch', 'max_len', 'lambda_weight', 'perturb_type', 'perturb_num', 'perturb_step', 'loss_type', 'pooler', 'metric', 'seed', 'sts', 'transfer'])
+    df = pd.DataFrame(list_result, columns=['bs', 'lr', 'epoch', 'max_len', 'lambda_w', 'pt_type', 'pt_num', 'pt_step', 'loss', 'pooler', 'metric', 'seed', 'sts', 'transfer'])
     df_groupby = df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std'])
-    # if df_groupby.index.name == 'lambda_weight':
-    #     # print(df_groupby.loc[list_lambda_weight])
+    # if df_groupby.index.name == 'lambda_w':
+    #     # print(df_groupby.loc[list_lambda_w])
     return df, df_groupby
 
 def result_eval(*groupby):
@@ -51,32 +51,33 @@ def result_eval(*groupby):
     assert os.path.exists(root_path)
 
     list_result = []
-    for batch_size in [128]:
+    for bs in [128]:
         for lr in [f'1e-{i}' for i in range(4, 5)]:
             for epoch in range(1, 2):
                 for max_len in [32]:
-                    list_lambda_weight = ['0e-0'] + [f'1e-{i}' for i in range(0, 1)]
-                    for lambda_weight in list_lambda_weight:
-                        for perturb_type in ['mask_token', 'unk_token', 'pad_token']:
-                            for perturb_num in range(1, 4):
-                                for perturb_step in range(1, 4):
+                    list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
+                    for lambda_w in list_lambda_w:
+                        for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
+                            for pt_num in range(1, 4):
+                                for pt_step in range(1, 4):
                                     for seed in range(0, 1):
-                                        for loss_type in ['l1', 'sl1', 'mse']:
+                                        for loss in ['l1', 'sl1', 'mse']:
                                             for pooler in ['wp', 'wop']:
                                                 for metric in ['stsb', 'sickr', 'sts', 'transfer']:
                                                     try:
-                                                        result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}_{perturb_type}_{perturb_num}_{perturb_step}_{loss_type}_{pooler}_{metric}.txt')
+                                                        result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}.txt')
                                                         if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{batch_size}_{lr}_{epoch}_{seed}_{max_len}_{lambda_weight}.txt')
+                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}.txt')
                                                         if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{batch_size}_{lr}_{epoch}_{seed}_{max_len}.txt')
+                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}.txt')
                                                         if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{batch_size}_{lr}_{epoch}_{seed}.txt')
+                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}.txt')
                                                         assert os.path.exists(result_path)
                                                         
                                                         with open(result_path, 'r') as f:
                                                             text = f.read()
                                                         text = re.sub(r'-* fasttest -*', '', text).strip()
+                                                        text = re.sub(r'-* test -*', '', text).strip()
                                                         index_split = text.find('+\n+')
                                                         text1 = text[:index_split + 1]
                                                         text2 = text[index_split + 1:].strip()
@@ -101,21 +102,26 @@ def result_eval(*groupby):
                                                             return df
 
                                                         df1 = prettytable_to_dataframe(text1)
-                                                        df2 = prettytable_to_dataframe(text2)
-                                                        list_score = [df1['Avg.'].squeeze(), df2['Avg.'].squeeze()]
-                                                        result = [batch_size, lr, epoch, max_len, lambda_weight, perturb_type, perturb_num, perturb_step, loss_type, pooler, metric, seed] + list(map(float, list_score))
+                                                        if text2:
+                                                            df2 = prettytable_to_dataframe(text2)
+                                                            list_score = [df1['Avg.'].squeeze(), df2['Avg.'].squeeze()]
+                                                        else:
+                                                            list_score = [df1['Avg.'].squeeze(), 0]
+                                                        result = [bs, lr, epoch, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, seed] + list(map(float, list_score))
                                                         
                                                         list_result.append(result)
                                                     except:
                                                         pass
-    df = pd.DataFrame(list_result, columns=['batch_size', 'lr', 'epoch', 'max_len', 'lambda_weight', 'perturb_type', 'perturb_num', 'perturb_step', 'loss_type', 'pooler', 'metric', 'seed', 'sts', 'transfer'])
+    df = pd.DataFrame(list_result, columns=['bs', 'lr', 'epoch', 'max_len', 'lambda_w', 'pt_type', 'pt_num', 'pt_step', 'loss', 'pooler', 'metric', 'seed', 'sts', 'transfer'])
     df_groupby = df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std'])
-    # if df_groupby.index.name == 'lambda_weight':
-    #     # print(df_groupby.loc[list_lambda_weight])
+    # if df_groupby.index.name == 'lambda_w':
+    #     # print(df_groupby.loc[list_lambda_w])
     return df, df_groupby
 
 ENCODER = 'SDCSE'
+RESULT_FOLDER = 'backup_eval_dropout_sim1'
 RESULT_FOLDER = 'backup_eval_token_sim1'
+RESULT_FOLDER = '../../../../../../../../../../data/chansonglim/backup_eval_token_sim1'
 
-result_dev('loss_type', 'perturb_type', 'perturb_num', 'perturb_step')[1]
-result_eval('pooler')[1]
+result_dev('loss', 'pt_type', 'pt_num', 'pt_step')[0]
+result_eval('loss', 'pt_type', 'pt_num', 'pt_step')[1]

@@ -1,16 +1,17 @@
 from asyncio.subprocess import DEVNULL
 from multiprocessing import Barrier
 from simcse import SimCSE
-from diffcse import DiffCSE
+# from diffcse import DiffCSE
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 import numpy as np
 from scipy.stats import spearmanr
 from tqdm import tqdm
 import pandas as pd
+import os
 
 DEVICE='cuda'
-BATCH_SIZE=32
+BATCH_SIZE=128
 
 # model = DiffCSE("voidism/diffcse-bert-base-uncased-sts")
 model = SimCSE("princeton-nlp/unsup-simcse-bert-base-uncased")
@@ -20,7 +21,7 @@ model = SimCSE("princeton-nlp/unsup-simcse-bert-base-uncased")
 print(model.pooler)
 print(model.device)
 
-def get_token_and_norm(tokenized_inputs):
+def get_norm(tokenized_inputs):
     global DEVICE
     # [print(model.tokenizer.convert_ids_to_tokens(tokenized_inputs_)) for tokenized_inputs_ in tokenized_inputs['input_ids'].tolist()]
     tokenized_inputs = {k: v.to(DEVICE) for k, v in tokenized_inputs.items()}
@@ -62,7 +63,7 @@ def perturbate_inputs(text, n_perturbate=1, n_sim=10, step=1):
                 for j in range(target_idx.shape[1]):
                     target_row[range(batch_size), target_idx[:, j]] = torch.Tensor([token_id] * batch_size).long()
             tokenized_inputs[token_type] = tokenized_inputs[token_type].reshape(batch_size * (n_perturbate + 1), -1)
-            result_att = get_token_and_norm(tokenized_inputs)
+            result_att = get_norm(tokenized_inputs)
             result_att = result_att.reshape(batch_size, n_perturbate + 1)
             x = torch.argsort(result_att).float()
             y = torch.Tensor([range(n_perturbate, -1, -1) for i in range(batch_size)])
@@ -91,10 +92,12 @@ def experiment(text, n_sim):
                 pass
     return df.astype(float)
 
-# model.model.encoder.config.hidden_dropout_prob = [[0.1], [0.5], [0.9]] * 128
-# model.model.encoder.config
+PATH_DATA = os.path.join(os.getcwd(), 'data', 'wiki1m_for_simcse.txt')
+with open(PATH_DATA, 'r') as f:
+    list_text = f.readlines()
+len(list_text)
 
-text = 'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.' # 14.1141
+text = list_text[3]
 df1 = experiment(text, n_sim=100)
 df1.loc[('mean', 'all'), :] = df1[:-1].mean()
 df1

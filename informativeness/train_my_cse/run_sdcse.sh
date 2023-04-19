@@ -37,8 +37,8 @@ for BATCH_SIZE in 128; do
                 for MAX_LEN in 32; do
                     for LAMBDA in 1e-0; do
                         for PERTURB_TYPE in dropout; do
-                            for PERTURB_NUM in 3; do
-                                for PERTURB_STEP in 1 2 3; do
+                            for PERTURB_NUM in 1; do
+                                for PERTURB_STEP in 1 2 3 4; do
                                     for LOSS in l1; do
                                         for POOLER in wp wop; do
                                             for METRIC in stsb; do

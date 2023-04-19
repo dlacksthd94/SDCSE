@@ -30,13 +30,13 @@ declare -A dict_metric=(
     ["transfer"]="avg_transfer --eval_transfer"
 )
 
-for BATCH_SIZE in 128; do
-    for LR in 1e-4; do
+for BATCH_SIZE in 64; do
+    for LR in 3e-5; do
         for EPOCH in 1; do
-            for SEED in 0; do
+            for SEED in 0 1 2 3 4; do
                 for MAX_LEN in 32; do
                     for POOLER in wp; do
-                        for METRIC in transfer sts; do
+                        for METRIC in stsb; do
                             taskset -c 120-127 \
                             python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
                                 --model_name_or_path bert-base-uncased \
