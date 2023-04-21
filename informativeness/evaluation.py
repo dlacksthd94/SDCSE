@@ -146,12 +146,12 @@ def main():
     # Set params for SentEval
     if args.mode == 'dev' or args.mode == 'fasttest':
         # Fast mode
-        params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
+        params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5, 'gpu_id': args.gpu_id}
         params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                                          'tenacity': 3, 'epoch_size': 2}
     elif args.mode == 'test':
         # Full mode
-        params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10}
+        params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10, 'gpu_id': args.gpu_id}
         params['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
                                          'tenacity': 5, 'epoch_size': 4}
     else:

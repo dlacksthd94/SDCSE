@@ -83,6 +83,7 @@ TASK_SET='full' # sts / transfer / full
 MODE='test' # test / dev / fasttest (applied only on transfer tasks)
 RESULT_FOLDER='.'
 ENCODER='SDCSE'
+GPU_ID=0
 
 for training_method in unsup; do
     for plm in bert; do
@@ -93,8 +94,8 @@ for training_method in unsup; do
                         for max_len in 32; do
                             for lambda_weight in 1e-0; do
                                 for PERTURB_TYPE in mask_token; do
-                                    for PERTURB_NUM in 2 3; do
-                                        for PERTURB_STEP in 1 2 3; do
+                                    for PERTURB_NUM in 3; do
+                                        for PERTURB_STEP in 3; do
                                             for LOSS in mse l1; do
                                                 for POOLER in wp wop; do
                                                     for METRIC in stsb; do
@@ -105,7 +106,7 @@ for training_method in unsup; do
                                                         fi
                                                         echo ${training_method} ${ENCODER} ${plm} ${POOLER} ${batch_size} ${lr} ${epoch} ${seed} ${max_len} ${lambda_weight} ${PERTURB_TYPE} ${PERTURB_NUM} ${PERTURB_STEP} ${LOSS} ${POOLER} ${METRIC}
                                                         if [ ${ENCODER} = PromCSE ]; then
-                                                            taskset -c 120-127 \
+                                                            # taskset -c 120-127 \
                                                             python evaluation.py \
                                                                 --model_name_or_path ${ENCODER}/result/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${plm}-base-uncased_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC} \
                                                                 --pooler ${dict_pooler_method[${POOLER}]} \
@@ -113,16 +114,16 @@ for training_method in unsup; do
                                                                 --tasks STS12 \
                                                                 --pre_seq_len 16 \
                                                                 --mode ${MODE} \
-                                                                --gpu_id 3 > ${save_folder}/${file_name}
+                                                                --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
                                                         else
-                                                            taskset -c 120-127 \
+                                                            # taskset -c 120-127 \
                                                             python evaluation.py \
                                                                 --model_name_or_path ${ENCODER}/result/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${plm}-base-uncased_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC} \
                                                                 --pooler ${dict_pooler_method[${POOLER}]} \
                                                                 --task_set ${TASK_SET} \
                                                                 --tasks STS12 \
                                                                 --mode ${MODE} \
-                                                                --gpu_id 3 > ${save_folder}/${file_name}
+                                                                --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
                                                         fi
                                                         echo
                                                     done
@@ -144,6 +145,7 @@ done
 # MODE='test' # test / dev / fasttest (applied only on transfer tasks)
 # RESULT_FOLDER='backup'
 # ENCODER='SimCSE'
+# GPU_ID=3
 
 # for training_method in unsup; do
 #     for plm in bert; do
@@ -169,7 +171,7 @@ done
 #                                             --tasks STS12 \
 #                                             --pre_seq_len 16 \
 #                                             --mode ${MODE} \
-#                                             --gpu_id 3 > ${save_folder}/${file_name}
+#                                             --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
 #                                     else
 #                                         taskset -c 120-127 \
 #                                         python evaluation.py \
@@ -178,7 +180,7 @@ done
 #                                             --task_set ${TASK_SET} \
 #                                             --tasks STS12 \
 #                                             --mode ${MODE} \
-#                                             --gpu_id 3 > ${save_folder}/${file_name}
+#                                             --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
 #                                     fi
 #                                     echo
 #                                 done

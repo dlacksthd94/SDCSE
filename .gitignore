@@ -12,7 +12,7 @@ scidocs
 result/
 data/
 model/
-SentEval/
+SentEval/data/
 
 # encoders
 SimCSE

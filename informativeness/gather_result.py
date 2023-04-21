@@ -128,4 +128,4 @@ RESULT_FOLDER = 'backup_eval_token_sim1'
 RESULT_FOLDER = '../../../../../../../../../../data/chansonglim/backup_eval_token_sim1'
 
 result_dev('loss', 'pt_type', 'pt_num', 'pt_step')[0]
-result_eval('pt_type', 'pt_num', 'pt_step', 'pooler')[1]
+result_eval('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler')[1]
