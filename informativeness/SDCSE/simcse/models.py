@@ -159,13 +159,15 @@ class CustomDropout(nn.Module):
     def __init__(self, dict_dropout, perturbation_num):
         super(CustomDropout, self).__init__()
         self.perturbation_num = perturbation_num
+        self.dropout = nn.Dropout(0.1)
         for i in range(perturbation_num + 1):
             setattr(self, f'dropout_{i}', nn.Dropout(dict_dropout[f'dropout_{i}']))
         
     def forward(self, x):
-        out = torch.tensor(x)
+        out = x.clone()
         for i in range(self.perturbation_num + 1):
             out[i::self.perturbation_num + 1, 1:, :] = getattr(self, f'dropout_{i}')(x[i::self.perturbation_num + 1, 1:, :])
+        out[:, 0, :] = self.dropout(out[:, 0, :])
         return out
 
 

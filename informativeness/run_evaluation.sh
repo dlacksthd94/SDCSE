@@ -79,23 +79,23 @@ list_encoder="SimCSE DiffCSE PromCSE MCSE SNCSE SDCSE"
 #     done
 #     cd ..
 
-TASK_SET='sts' # sts / transfer / full
-MODE='fasttest' # test / dev / fasttest (applied only on transfer tasks)
-RESULT_FOLDER='backup_eval_dropout_sim1'
-ENCODER='SimCSE'
+TASK_SET='full' # sts / transfer / full
+MODE='test' # test / dev / fasttest (applied only on transfer tasks)
+RESULT_FOLDER='.'
+ENCODER='SDCSE'
 
 for training_method in unsup; do
     for plm in bert; do
-        for batch_size in 128; do
-            for lr in 1e-4; do
+        for batch_size in 64; do
+            for lr in 3e-5; do
                 for epoch in 1; do
                     for seed in 0; do
                         for max_len in 32; do
-                            for lambda_weight in 1e-1; do
-                                for PERTURB_TYPE in dropout; do
-                                    for PERTURB_NUM in 1 2 3; do
+                            for lambda_weight in 1e-0; do
+                                for PERTURB_TYPE in mask_token; do
+                                    for PERTURB_NUM in 2 3; do
                                         for PERTURB_STEP in 1 2 3; do
-                                            for LOSS in l1; do
+                                            for LOSS in mse l1; do
                                                 for POOLER in wp wop; do
                                                     for METRIC in stsb; do
                                                         file_name=result_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}.txt
@@ -139,3 +139,54 @@ for training_method in unsup; do
         done
     done
 done
+
+# TASK_SET='full' # sts / transfer / full
+# MODE='test' # test / dev / fasttest (applied only on transfer tasks)
+# RESULT_FOLDER='backup'
+# ENCODER='SimCSE'
+
+# for training_method in unsup; do
+#     for plm in bert; do
+#         for batch_size in 64; do
+#             for lr in 3e-5; do
+#                 for epoch in 1; do
+#                     for seed in 0 1 2 3 4; do
+#                         for max_len in 32; do
+#                             for POOLER in wp wop; do
+#                                 for METRIC in stsb; do
+#                                     file_name=result_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${POOLER}_${METRIC}.txt
+#                                     save_folder="result/evaluation/${dict_encoder[${ENCODER}]}/${RESULT_FOLDER}"
+#                                     if [ ! -d ${save_folder} ]; then
+#                                         mkdir ${save_folder}
+#                                     fi
+#                                     echo ${training_method} ${ENCODER} ${plm} ${POOLER} ${batch_size} ${lr} ${epoch} ${seed} ${max_len} ${POOLER} ${METRIC}
+#                                     if [ ${ENCODER} = PromCSE ]; then
+#                                         taskset -c 120-127 \
+#                                         python evaluation.py \
+#                                             --model_name_or_path ${ENCODER}/result/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${plm}-base-uncased_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${POOLER}_${METRIC} \
+#                                             --pooler ${dict_pooler_method[${POOLER}]} \
+#                                             --task_set ${TASK_SET} \
+#                                             --tasks STS12 \
+#                                             --pre_seq_len 16 \
+#                                             --mode ${MODE} \
+#                                             --gpu_id 3 > ${save_folder}/${file_name}
+#                                     else
+#                                         taskset -c 120-127 \
+#                                         python evaluation.py \
+#                                             --model_name_or_path ${ENCODER}/result/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${plm}-base-uncased_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${POOLER}_${METRIC} \
+#                                             --pooler ${dict_pooler_method[${POOLER}]} \
+#                                             --task_set ${TASK_SET} \
+#                                             --tasks STS12 \
+#                                             --mode ${MODE} \
+#                                             --gpu_id 3 > ${save_folder}/${file_name}
+#                                     fi
+#                                     echo
+#                                 done
+#                             done
+#                         done
+#                     done
+#                 done
+#             done
+#         done
+#     done
+# done

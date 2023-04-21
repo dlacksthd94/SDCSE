@@ -118,10 +118,14 @@ def result_eval(*groupby):
     #     # print(df_groupby.loc[list_lambda_w])
     return df, df_groupby
 
+ENCODER = 'SimCSE'
+RESULT_FOLDER = 'backup'
+
 ENCODER = 'SDCSE'
-RESULT_FOLDER = 'backup_eval_dropout_sim1'
+RESULT_FOLDER = 'backup_eval_dropout_sim1_all'
+RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
 RESULT_FOLDER = 'backup_eval_token_sim1'
 RESULT_FOLDER = '../../../../../../../../../../data/chansonglim/backup_eval_token_sim1'
 
 result_dev('loss', 'pt_type', 'pt_num', 'pt_step')[0]
-result_eval('loss', 'pt_type', 'pt_num', 'pt_step')[1]
+result_eval('pt_type', 'pt_num', 'pt_step', 'pooler')[1]
