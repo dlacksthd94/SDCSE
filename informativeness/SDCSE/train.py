@@ -280,15 +280,15 @@ class OurTrainingArguments(TrainingArguments):
         return device
 
 # #######################
-# BATCH_SIZE=128
-# LR='1e-4'
+# BATCH_SIZE=64
+# LR='3e-5'
 # EPOCH=1
 # SEED=0
 # MAX_LEN=32
-# PERTURB_TYPE='dropout'
-# PERTURB_NUM=1
-# PERTURB_STEP=3
-# LAMBDA=0.1
+# PERTURB_TYPE='mask_token'
+# PERTURB_NUM=2
+# PERTURB_STEP=1
+# LAMBDA='0e-0'
 # sys.argv = [
 #     'train.py',
 #     '--model_name_or_path', 'bert-base-uncased',

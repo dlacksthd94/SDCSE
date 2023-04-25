@@ -90,7 +90,7 @@ for training_method in unsup; do
         for batch_size in 64; do
             for lr in 3e-5; do
                 for epoch in 1; do
-                    for seed in 4; do
+                    for seed in 1; do
                         for max_len in 32; do
                             for lambda_weight in 1e-0; do
                                 for PERTURB_TYPE in mask_token; do

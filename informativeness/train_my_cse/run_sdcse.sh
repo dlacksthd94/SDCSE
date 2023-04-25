@@ -33,7 +33,7 @@ declare -A dict_metric=(
 for BATCH_SIZE in 64; do
     for LR in 3e-5; do
         for EPOCH in 1; do
-            for SEED in 2 3 4; do
+            for SEED in 4; do
                 for MAX_LEN in 32; do
                     for LAMBDA in 1e-0; do
                         for PERTURB_TYPE in mask_token; do
