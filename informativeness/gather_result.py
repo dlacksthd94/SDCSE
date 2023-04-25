@@ -10,8 +10,8 @@ def result_dev(*groupby):
     assert os.path.exists(root_path)
 
     list_result = []
-    for bs in [128]:
-        for lr in [f'1e-{i}' for i in range(4, 5)]:
+    for bs in [64, 128]:
+        for lr in [f'1e-{i}' for i in range(4, 5)] + ['3e-5']:
             for epoch in range(1, 2):
                 for max_len in [32]:
                     list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
@@ -19,8 +19,8 @@ def result_dev(*groupby):
                         for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
                             for pt_num in range(1, 4):
                                 for pt_step in range(1, 4):
-                                    for seed in range(0, 1):
-                                        for loss in ['l1', 'sl1', 'mse']:
+                                    for seed in range(0, 5):
+                                        for loss in ['mse', 'l1', 'sl1']:
                                             for pooler in ['wp', 'wop']:
                                                 for metric in ['stsb', 'sickr', 'sts', 'transfer']:
                                                     try:
@@ -50,69 +50,67 @@ def result_eval(*groupby):
     root_path = os.path.join(os.path.expanduser('~'), 'PAPER/SDCSE/informativeness/result/evaluation', ENCODER.lower(), RESULT_FOLDER)
     assert os.path.exists(root_path)
 
-    list_result = []
-    for bs in [128]:
-        for lr in [f'1e-{i}' for i in range(4, 5)]:
-            for epoch in range(1, 2):
-                for max_len in [32]:
-                    list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
-                    for lambda_w in list_lambda_w:
-                        for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
-                            for pt_num in range(1, 4):
-                                for pt_step in range(1, 4):
-                                    for seed in range(0, 1):
-                                        for loss in ['l1', 'sl1', 'mse']:
-                                            for pooler in ['wp', 'wop']:
-                                                for metric in ['stsb', 'sickr', 'sts', 'transfer']:
-                                                    try:
-                                                        result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}.txt')
-                                                        if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}.txt')
-                                                        if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}.txt')
-                                                        if not os.path.exists(result_path):
-                                                            result_path = os.path.join(root_path, f'result_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}.txt')
-                                                        assert os.path.exists(result_path)
-                                                        
-                                                        with open(result_path, 'r') as f:
-                                                            text = f.read()
-                                                        text = re.sub(r'-* fasttest -*', '', text).strip()
-                                                        text = re.sub(r'-* test -*', '', text).strip()
-                                                        index_split = text.find('+\n+')
-                                                        text1 = text[:index_split + 1]
-                                                        text2 = text[index_split + 1:].strip()
-                                                        
-                                                        def prettytable_to_dataframe(text):
-                                                            text = text.split('\n')
-
-                                                            # 헤더 추출
-                                                            headers = text[1].strip().split('|')[1:-1]
-                                                            headers = [header.strip() for header in headers]
-
-                                                            # 데이터 추출
-                                                            data = []
-                                                            for line in text[3:]:
-                                                                if line.startswith('+') and line.endswith('+'):
-                                                                    continue
-                                                                row = line.strip().split('|')[1:-1]
-                                                                row = [value.strip() for value in row]
-                                                                data.append(row)
+    dict_result = {}
+    for mode in ['test', 'fasttest']:
+        for bs in [64, 128]:
+            for lr in [f'1e-{i}' for i in range(4, 5)] + ['3e-5']:
+                for epoch in range(1, 2):
+                    for max_len in [32]:
+                        list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
+                        for lambda_w in list_lambda_w:
+                            for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
+                                for pt_num in range(1, 4):
+                                    for pt_step in range(1, 4):
+                                        for seed in range(0, 5):
+                                            for loss in ['l1', 'sl1', 'mse']:
+                                                for pooler in ['wp', 'wop']:
+                                                    for metric in ['stsb', 'sickr', 'sts', 'transfer']:
+                                                        try:
+                                                            if ENCODER == 'SimCSE':
+                                                                result_path = os.path.join(root_path, f'{mode}_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}_{pooler}_{metric}.txt')
+                                                            elif ENCODER == 'SDCSE':
+                                                                result_path = os.path.join(root_path, f'{mode}_unsup_{ENCODER.lower()}_bert_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}.txt')
+                                                            assert os.path.exists(result_path)
                                                             
-                                                            df = pd.DataFrame(data, columns=headers)
-                                                            return df
+                                                            with open(result_path, 'r') as f:
+                                                                text = f.read()
+                                                            text = re.sub(r'-* fasttest -*', '', text).strip()
+                                                            text = re.sub(r'-* test -*', '', text).strip()
+                                                            index_split = text.find('+\n+')
+                                                            text1 = text[:index_split + 1]
+                                                            text2 = text[index_split + 1:].strip()
+                                                            
+                                                            def prettytable_to_dataframe(text):
+                                                                text = text.split('\n')
 
-                                                        df1 = prettytable_to_dataframe(text1)
-                                                        if text2:
-                                                            df2 = prettytable_to_dataframe(text2)
-                                                            list_score = [df1['Avg.'].squeeze(), df2['Avg.'].squeeze()]
-                                                        else:
-                                                            list_score = [df1['Avg.'].squeeze(), 0]
-                                                        result = [bs, lr, epoch, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, seed] + list(map(float, list_score))
-                                                        
-                                                        list_result.append(result)
-                                                    except:
-                                                        pass
-    df = pd.DataFrame(list_result, columns=['bs', 'lr', 'epoch', 'max_len', 'lambda_w', 'pt_type', 'pt_num', 'pt_step', 'loss', 'pooler', 'metric', 'seed', 'sts', 'transfer'])
+                                                                # 헤더 추출
+                                                                headers = text[1].strip().split('|')[1:-1]
+                                                                headers = [header.strip() for header in headers]
+
+                                                                # 데이터 추출
+                                                                data = []
+                                                                for line in text[3:]:
+                                                                    if line.startswith('+') and line.endswith('+'):
+                                                                        continue
+                                                                    row = line.strip().split('|')[1:-1]
+                                                                    row = [value.strip() for value in row]
+                                                                    data.append(row)
+                                                                
+                                                                df = pd.DataFrame(data, columns=headers)
+                                                                return df
+
+                                                            df1 = prettytable_to_dataframe(text1)
+                                                            if text2:
+                                                                df2 = prettytable_to_dataframe(text2)
+                                                                list_score = [df1['Avg.'].squeeze(), df2['Avg.'].squeeze()]
+                                                            else:
+                                                                list_score = [df1['Avg.'].squeeze(), 0]
+                                                            result = [mode, bs, lr, epoch, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, seed] + list(map(float, list_score))
+                                                            
+                                                            dict_result[result_path] = result
+                                                        except:
+                                                            pass
+    df = pd.DataFrame(dict_result.values(), columns=['mode', 'bs', 'lr', 'epoch', 'max_len', 'lambda_w', 'pt_type', 'pt_num', 'pt_step', 'loss', 'pooler', 'metric', 'seed', 'sts', 'transfer'])
     df_groupby = df.groupby([*groupby])['sts', 'transfer'].agg(['mean', 'std'])
     # if df_groupby.index.name == 'lambda_w':
     #     # print(df_groupby.loc[list_lambda_w])
@@ -124,8 +122,9 @@ RESULT_FOLDER = 'backup'
 ENCODER = 'SDCSE'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_all'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
-RESULT_FOLDER = 'backup_eval_token_sim1'
+RESULT_FOLDER = 'backup_eval_token_sim2'
 RESULT_FOLDER = '../../../../../../../../../../data/chansonglim/backup_eval_token_sim1'
+RESULT_FOLDER = '.'
 
-result_dev('loss', 'pt_type', 'pt_num', 'pt_step')[0]
-result_eval('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler')[1]
+result_dev('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w')[0]
+result_eval('mode', 'loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w')[1]

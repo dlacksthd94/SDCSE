@@ -96,15 +96,17 @@ class InformativenessNormCorrelation(nn.Module):
         else:
             num_sent = pooler_output.size(1)
             n1 = pooler_output[:, range(0, num_sent, 2), :].norm(dim=-1)
-            # n2 = pooler_output[:, range(1, num_sent + 1, 2), :].norm(dim=-1)
+            n2 = pooler_output[:, range(1, num_sent + 1, 2), :].norm(dim=-1)
             
-            if self.loss_type == 'l1':
-                loss_norm_informativeness = F.l1_loss(n1, n1.sort()[0])
-            elif self.loss_type == 'sl1':
-                loss_norm_informativeness = F.smooth_l1_loss(n1, n1.sort()[0])
-            elif self.loss_type == 'mse':
-                loss_norm_informativeness = F.mse_loss(n1, n1.sort()[0])
-                
+            loss_norm_informativeness = 0
+            for n in [n1, n2]:
+                if self.loss_type == 'l1':
+                    loss_norm_informativeness += F.l1_loss(n, n.sort()[0])
+                elif self.loss_type == 'sl1':
+                    loss_norm_informativeness += F.smooth_l1_loss(n, n.sort()[0])
+                elif self.loss_type == 'mse':
+                    loss_norm_informativeness += F.mse_loss(n, n.sort()[0])
+                    
         return loss_norm_informativeness
     
     def spearmans_rank_corr(self, nr, r):

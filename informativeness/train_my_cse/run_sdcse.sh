@@ -33,14 +33,14 @@ declare -A dict_metric=(
 for BATCH_SIZE in 64; do
     for LR in 3e-5; do
         for EPOCH in 1; do
-            for SEED in 0; do
+            for SEED in 2 3 4; do
                 for MAX_LEN in 32; do
                     for LAMBDA in 1e-0; do
                         for PERTURB_TYPE in mask_token; do
-                            for PERTURB_NUM in 2 3; do
-                                for PERTURB_STEP in 1 2 3; do
-                                    for LOSS in mse l1; do
-                                        for POOLER in wp wop; do
+                            for PERTURB_NUM in 1 2; do
+                                for PERTURB_STEP in 1; do
+                                    for LOSS in mse; do
+                                         for POOLER in wp; do
                                             for METRIC in stsb; do
                                                 taskset -c 120-127 \
                                                 python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \

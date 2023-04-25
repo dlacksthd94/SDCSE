@@ -118,7 +118,7 @@ class CLTrainer(Trainer):
 
         # Set params for SentEval (fastmode)
         params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 5}
-        params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128 * 1000,
+        params['classifier'] = {'nhid': 0, 'optim': 'rmsprop', 'batch_size': 128,
                                             'tenacity': 3, 'epoch_size': 2}
 
         se = senteval.engine.SE(params, batcher, prepare)

@@ -11,7 +11,7 @@ import pandas as pd
 import os
 
 DEVICE='cuda'
-BATCH_SIZE=128
+BATCH_SIZE=32
 
 # model = DiffCSE("voidism/diffcse-bert-base-uncased-sts")
 model = SimCSE("princeton-nlp/unsup-simcse-bert-base-uncased")
@@ -96,6 +96,9 @@ PATH_DATA = os.path.join(os.getcwd(), 'data', 'wiki1m_for_simcse.txt')
 with open(PATH_DATA, 'r') as f:
     list_text = f.readlines()
 len(list_text)
+
+
+
 
 text = list_text[3]
 df1 = experiment(text, n_sim=100)
