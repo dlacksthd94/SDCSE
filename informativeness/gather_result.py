@@ -123,8 +123,10 @@ ENCODER = 'SDCSE'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_all'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
 RESULT_FOLDER = 'backup_eval_token_sim2'
+RESULT_FOLDER = 'backup_eval_token_sim1'
 RESULT_FOLDER = '../../../../../../../../../../data/chansonglim/backup_eval_token_sim1'
 RESULT_FOLDER = '.'
 
 result_dev('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w')[0]
-result_eval('mode', 'loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w')[1]
+result_eval('mode', 'loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w', 'metric')[1]
+0.231301 * 1.96 / 5 ** 0.5

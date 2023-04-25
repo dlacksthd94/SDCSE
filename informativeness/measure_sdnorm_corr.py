@@ -19,12 +19,12 @@ def get_norm(tokenized_inputs_batch):
     embeddings = outputs.last_hidden_state[:, 0]
     return embeddings.norm(dim=-1).cpu().detach()#.numpy().round(4)
 
-def calculate_corr(tokenized_inputs_interleaved, n_perturbate=1, step=1):
+def calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max):
     global BATCH_SIZE
     num_sent_in_batch = BATCH_SIZE // (n_perturbate + 1)
     adjusted_batch_size = num_sent_in_batch * (n_perturbate + 1)
     
-    idx_to_select = [x for x in range(tokenized_inputs_interleaved['input_ids'].shape[0]) if x % 10 in range(n_perturbate + 1)]
+    idx_to_select = [x for x in range(tokenized_inputs_interleaved['input_ids'].shape[0]) if x % (n_perturbate_max + 1) in range(n_perturbate + 1)]
     tokenized_inputs_selected = {id_type: tensor[idx_to_select] for id_type, tensor in tokenized_inputs_interleaved.items()}
 
     total_len = tokenized_inputs_selected['input_ids'].shape[0]
@@ -45,7 +45,7 @@ def calculate_corr(tokenized_inputs_interleaved, n_perturbate=1, step=1):
 def experiment(n_perturbate_max=9, step_max=9):
     path_data = os.path.join(os.getcwd(), 'data', 'wiki1m_for_simcse.txt')
     with open(path_data, 'r') as f:
-        list_text = f.readlines()
+        list_text = f.readlines()[:10000]
     len(list_text)
     
     tokenized_inputs = tokenizer(list_text, padding=True, truncation=True, max_length=MAX_LEN, return_tensors="pt")
@@ -65,20 +65,19 @@ def experiment(n_perturbate_max=9, step_max=9):
     
     list_n_perturbate = range(1, n_perturbate_max + 1)
     list_step = range(1, step_max + 1)
-    df = pd.DataFrame(columns=['unk', 'mask', 'pad'], index=pd.MultiIndex.from_product([list_n_perturbate, list_step], names=['n_perturbate', 'step']))
-    # n_perturbate, step = 1, 2
+    df = pd.DataFrame(columns=dict_token_type, index=pd.MultiIndex.from_product([list_n_perturbate, list_step], names=['n_perturbate', 'step']))
     for step in tqdm(list_step, leave=False):
         tokenized_inputs_interleaved = {id_type: tensor.repeat_interleave(n_perturbate_max + 1, dim=0) for id_type, tensor in tokenized_inputs.items()}
         for n_perturbate in tqdm(list_n_perturbate, leave=False):
             if n_perturbate * step > list_randint.size(1):
                 continue
-            for token_type, token_name in dict_token_type.items():
+            for token_type, token_name in tqdm(dict_token_type.items(), leave=False):
                 token_id = tokenizer.convert_tokens_to_ids(token_name)
                 for i in range(step):
                     start_idx = (n_perturbate - 1) * step + i
                     target_index_col = list_randint[:, start_idx:start_idx + 1]
                     target_index_col = target_index_col.repeat_interleave(n_perturbate_max - n_perturbate + 1, dim=0).squeeze()
-                    target_index_row = torch.Tensor([x for x in range(len(list_text) * (n_perturbate_max + 1)) if x % 10 not in range(n_perturbate)]).long()
+                    target_index_row = torch.Tensor([x for x in range(len(list_text) * (n_perturbate_max + 1)) if x % (n_perturbate_max + 1) not in range(n_perturbate)]).long()
                     target_index = target_index_row, target_index_col
                     special_tokens_mask_temp = special_tokens_mask.repeat_interleave(n_perturbate_max + 1, dim=0)
                     value_to_replace_with = (torch.Tensor([token_id] * len(target_index_row)) * special_tokens_mask_temp[target_index]).long()
@@ -87,12 +86,12 @@ def experiment(n_perturbate_max=9, step_max=9):
 
                     with torch.no_grad():
                         model.eval()
-                        result = calculate_corr(tokenized_inputs_interleaved, n_perturbate=n_perturbate, step=step)
+                        result = calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max)
                     df.loc[(n_perturbate, step), token_type] = result
     return df.astype(float)
 
 DEVICE='cuda'
-BATCH_SIZE=512
+BATCH_SIZE=4096
 MAX_LEN=32
 
 list_model_name = [
@@ -109,10 +108,10 @@ for model_name in list_model_name:
     model = model.model
     if torch.cuda.device_count() > 1:
         model = DataParallel(model)
-        BATCH_SIZE *= torch.cuda.device_count() * 4
+        BATCH_SIZE *= torch.cuda.device_count()
     _ = model.to(DEVICE)
 
-    df = experiment()
+    df = experiment(n_perturbate_max=9, step_max=9)
     df = df.dropna(axis=0, how='all')
     df['mean'] = df.mean(axis=1)
     df = df.round(4)
