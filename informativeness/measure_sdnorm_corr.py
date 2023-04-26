@@ -11,6 +11,8 @@ from tqdm import tqdm
 import pandas as pd
 import os
 import itertools
+import pickle
+import random
 
 def get_norm(tokenized_inputs_batch):
     global DEVICE
@@ -29,24 +31,28 @@ def calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max)
 
     total_len = tokenized_inputs_selected['input_ids'].shape[0]
     list_corr = []
+    list_norm = []
     for i in tqdm(range(0, total_len, adjusted_batch_size), leave=False):
         tokenized_inputs_batch = {id_type: tensor[i:i + adjusted_batch_size] for id_type, tensor in tokenized_inputs_selected.items()}
         
         # tokenized_inputs[token_type] = tokenized_inputs[token_type].reshape(num_sent_in_batch * (n_perturbate + 1), -1)
-        result_att = get_norm(tokenized_inputs_batch)
-        result_att = result_att.reshape(-1, n_perturbate + 1)
-        x = torch.argsort(result_att).float()
-        y = torch.Tensor([range(n_perturbate, -1, -1) for _ in range(result_att.shape[0])])
+        result = get_norm(tokenized_inputs_batch)
+        result = result.reshape(-1, n_perturbate + 1)
+        x = torch.argsort(result).float()
+        y = torch.Tensor([range(n_perturbate, -1, -1) for _ in range(result.shape[0])])
         spearman_corr = 1 - (x - y).pow(2).sum(dim=1).mul(6).div((n_perturbate + 1) * ((n_perturbate + 1) ** 2 - 1))
         list_corr.append(spearman_corr)
+        list_norm.append(result)
+    list_norm = torch.cat(list_norm)
     corr_mean = torch.cat(list_corr).mean()
-    return corr_mean.item()
+    return corr_mean.item(), list_norm
 
-def experiment(n_perturbate_max=9, step_max=9):
+def experiment(num_sent, n_perturbate_max=9, step_max=9):
     path_data = os.path.join(os.getcwd(), 'data', 'wiki1m_for_simcse.txt')
     with open(path_data, 'r') as f:
-        list_text = f.readlines()[:10000]
+        list_text = f.readlines()
     len(list_text)
+    list_text = random.sample(list_text, num_sent)
     
     tokenized_inputs = tokenizer(list_text, padding=True, truncation=True, max_length=MAX_LEN, return_tensors="pt")
     special_tokens_mask = [
@@ -60,11 +66,13 @@ def experiment(n_perturbate_max=9, step_max=9):
     dict_token_type = {
         'mask': '[MASK]',
         'unk': '[UNK]',
-        'pad': '[PAD]'
+        # 'pad': '[PAD]'
     }
     
     list_n_perturbate = range(1, n_perturbate_max + 1)
     list_step = range(1, step_max + 1)
+    # n_perturbate, step, i = 1, 1, 0
+    dict_norm = {i: {} for i in list_n_perturbate}
     df = pd.DataFrame(columns=dict_token_type, index=pd.MultiIndex.from_product([list_n_perturbate, list_step], names=['n_perturbate', 'step']))
     for step in tqdm(list_step, leave=False):
         tokenized_inputs_interleaved = {id_type: tensor.repeat_interleave(n_perturbate_max + 1, dim=0) for id_type, tensor in tokenized_inputs.items()}
@@ -86,21 +94,23 @@ def experiment(n_perturbate_max=9, step_max=9):
 
                     with torch.no_grad():
                         model.eval()
-                        result = calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max)
-                    df.loc[(n_perturbate, step), token_type] = result
-    return df.astype(float)
+                        corr, list_norm = calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max)
+                    df.loc[(n_perturbate, step), token_type] = corr
+                    dict_norm[n_perturbate][step] = list_norm
+    return df.astype(float), dict_norm
 
 DEVICE='cuda'
-BATCH_SIZE=4096
+BATCH_SIZE=2048
 MAX_LEN=32
 
 list_model_name = [
     "princeton-nlp/unsup-simcse-bert-base-uncased",
-    "princeton-nlp/unsup-simcse-bert-large-uncased",
-    "princeton-nlp/unsup-simcse-roberta-base",
-    "princeton-nlp/unsup-simcse-roberta-large"
+    # "princeton-nlp/unsup-simcse-bert-large-uncased",
+    # "princeton-nlp/unsup-simcse-roberta-base",
+    # "princeton-nlp/unsup-simcse-roberta-large"
 ]
 
+# model_name = "princeton-nlp/unsup-simcse-bert-base-uncased"
 for model_name in list_model_name:
     model = SimCSE(model_name)
 
@@ -111,12 +121,14 @@ for model_name in list_model_name:
         BATCH_SIZE *= torch.cuda.device_count()
     _ = model.to(DEVICE)
 
-    df = experiment(n_perturbate_max=9, step_max=9)
+    df, dict_norm = experiment(num_sent=100000, n_perturbate_max=9, step_max=9)
     df = df.dropna(axis=0, how='all')
     df['mean'] = df.mean(axis=1)
     df = df.round(4)
     x = model_name.split('/')[1].split('-')
     df.to_csv(f"../sdnorm_token_{x[2]}-{x[3]}.csv")
+    with open(f'../sdnorm_token_{x[2]}-{x[3]}.pickle', 'wb') as f:
+        pickle.dump(dict_norm, f)
 
 
 # # similarity experiment
