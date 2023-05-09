@@ -21,31 +21,31 @@ def get_norm(tokenized_inputs_batch):
     embeddings = outputs.last_hidden_state[:, 0]
     return embeddings.norm(dim=-1).cpu().detach()#.numpy().round(4)
 
-def calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max):
+def calculate_corr(tokenized_inputs_interleaved, num_dup):
     global BATCH_SIZE
-    num_sent_in_batch = BATCH_SIZE // (n_perturbate + 1)
-    adjusted_batch_size = num_sent_in_batch * (n_perturbate + 1)
+    num_sent_in_batch = BATCH_SIZE // num_dup
+    adjusted_batch_size = num_sent_in_batch * num_dup
     
-    idx_to_select = [x for x in range(tokenized_inputs_interleaved['input_ids'].shape[0]) if x % (n_perturbate_max + 1) in range(n_perturbate + 1)]
-    tokenized_inputs_selected = {id_type: tensor[idx_to_select] for id_type, tensor in tokenized_inputs_interleaved.items()}
+    # idx_to_select = [x for x in range(tokenized_inputs_interleaved['input_ids'].shape[0]) if x % (n_perturbate_max + 1) in range(n_perturbate + 1)]
+    # tokenized_inputs_selected = {id_type: tensor[idx_to_select] for id_type, tensor in tokenized_inputs_interleaved.items()}
 
-    total_len = tokenized_inputs_selected['input_ids'].shape[0]
-    list_corr = []
-    list_norm = []
+    total_len = tokenized_inputs_interleaved['input_ids'].shape[0]
+    list_result = []
     for i in tqdm(range(0, total_len, adjusted_batch_size), leave=False):
-        tokenized_inputs_batch = {id_type: tensor[i:i + adjusted_batch_size] for id_type, tensor in tokenized_inputs_selected.items()}
-        
-        # tokenized_inputs[token_type] = tokenized_inputs[token_type].reshape(num_sent_in_batch * (n_perturbate + 1), -1)
+        tokenized_inputs_batch = {id_type: tensor[i:i + adjusted_batch_size] for id_type, tensor in tokenized_inputs_interleaved.items()}        
         result = get_norm(tokenized_inputs_batch)
-        result = result.reshape(-1, n_perturbate + 1)
-        x = torch.argsort(result).float()
-        y = torch.Tensor([range(n_perturbate, -1, -1) for _ in range(result.shape[0])])
-        spearman_corr = 1 - (x - y).pow(2).sum(dim=1).mul(6).div((n_perturbate + 1) * ((n_perturbate + 1) ** 2 - 1))
-        list_corr.append(spearman_corr)
-        list_norm.append(result)
-    list_norm = torch.cat(list_norm)
-    corr_mean = torch.cat(list_corr).mean()
-    return corr_mean.item(), list_norm
+        result = result.reshape(-1, num_dup)
+        list_result.append(result)
+    tsr_result = torch.cat(list_result)
+    
+    list_corr = []    
+    for i in range(1, num_dup):
+        x = torch.argsort(tsr_result[:, :i + 1]).float()
+        y = torch.Tensor([range(i, -1, -1) for _ in range(tsr_result.shape[0])])
+        spearman_corr = 1 - (x - y).pow(2).sum(dim=1).mul(6).div((i + 1) * ((i + 1) ** 2 - 1)) # same as [spearmanr(*pair).correlation for pair in zip(x, y)]
+        list_corr.append(spearman_corr.mean().item())
+
+    return list_corr, tsr_result
 
 def experiment(num_sent, n_perturbate_max=9, step_max=9):
     path_data = os.path.join(os.getcwd(), 'data', 'wiki1m_for_simcse.txt')
@@ -63,51 +63,47 @@ def experiment(num_sent, n_perturbate_max=9, step_max=9):
     special_tokens_mask = torch.where(all_elements_are_zero[:, None], torch.cat([torch.ones((special_tokens_mask.shape[0], 1)), special_tokens_mask[:, 1:]], dim=1), special_tokens_mask) # a subset of `special_tokens_mask` where all elements are 0 raises an error, so fill their 2nd index with 1.
     list_randint = torch.multinomial(special_tokens_mask, MAX_LEN - 2, replacement=False)
     
-    dict_token_type = {
-        'mask': '[MASK]',
-        'unk': '[UNK]',
-        # 'pad': '[PAD]'
-    }
-    
-    list_n_perturbate = range(1, n_perturbate_max + 1)
+    list_token_type = ['mask', 'unk', 'pad']
     list_step = range(1, step_max + 1)
     # n_perturbate, step, i = 1, 1, 0
-    dict_norm = {i: {} for i in list_n_perturbate}
-    df = pd.DataFrame(columns=dict_token_type, index=pd.MultiIndex.from_product([list_n_perturbate, list_step], names=['n_perturbate', 'step']))
+    dict_norm = {}
+    df = pd.DataFrame(columns=list_token_type, index=pd.MultiIndex.from_product([range(1, n_perturbate_max + 1), list_step], names=['n_perturbate', 'step']))
     for step in tqdm(list_step, leave=False):
-        tokenized_inputs_interleaved = {id_type: tensor.repeat_interleave(n_perturbate_max + 1, dim=0) for id_type, tensor in tokenized_inputs.items()}
-        for n_perturbate in tqdm(list_n_perturbate, leave=False):
-            if n_perturbate * step > list_randint.size(1):
-                continue
-            for token_type, token_name in tqdm(dict_token_type.items(), leave=False):
-                token_id = tokenizer.convert_tokens_to_ids(token_name)
+        num_dup = min(list_randint.size(1) // step + 1, n_perturbate_max + 1)
+        list_n_perturbate = range(1, num_dup)
+        tokenized_inputs_interleaved = {id_type: tensor.repeat_interleave(num_dup, dim=0) for id_type, tensor in tokenized_inputs.items()}
+        
+        for token_type in tqdm(list_token_type, leave=False):
+            token_id = getattr(tokenizer, f'{token_type}_token_id')
+            
+            for n_perturbate in tqdm(list_n_perturbate, leave=False):
                 for i in range(step):
                     start_idx = (n_perturbate - 1) * step + i
                     target_index_col = list_randint[:, start_idx:start_idx + 1]
-                    target_index_col = target_index_col.repeat_interleave(n_perturbate_max - n_perturbate + 1, dim=0).squeeze()
-                    target_index_row = torch.Tensor([x for x in range(len(list_text) * (n_perturbate_max + 1)) if x % (n_perturbate_max + 1) not in range(n_perturbate)]).long()
+                    target_index_col = target_index_col.repeat_interleave(num_dup - n_perturbate, dim=0).squeeze()
+                    target_index_row = torch.Tensor([x for x in range(len(list_text) * num_dup) if x % num_dup not in range(n_perturbate)]).long()
                     target_index = target_index_row, target_index_col
-                    special_tokens_mask_temp = special_tokens_mask.repeat_interleave(n_perturbate_max + 1, dim=0)
+                    special_tokens_mask_temp = special_tokens_mask.repeat_interleave(num_dup, dim=0)
                     value_to_replace_with = (torch.Tensor([token_id] * len(target_index_row)) * special_tokens_mask_temp[target_index]).long()
                     tokenized_inputs_interleaved['input_ids'][target_index] = value_to_replace_with
-                    # print(tokenized_inputs_interleaved['input_ids'][10:20])
-
-                    with torch.no_grad():
-                        model.eval()
-                        corr, list_norm = calculate_corr(tokenized_inputs_interleaved, n_perturbate, n_perturbate_max)
-                    df.loc[(n_perturbate, step), token_type] = corr
-                    dict_norm[n_perturbate][step] = list_norm
+                    # print(tokenized_inputs_interleaved['input_ids'][:num_dup + 1])
+            
+            with torch.no_grad():
+                _ = model.eval()
+                list_corr, tsr_norm = calculate_corr(tokenized_inputs_interleaved, num_dup)
+            df.loc[pd.MultiIndex.from_product([range(1, num_dup), [step]]), token_type] = list_corr
+        dict_norm[step] = tsr_norm
     return df.astype(float), dict_norm
 
 DEVICE='cuda'
-BATCH_SIZE=2048
+BATCH_SIZE=8192
 MAX_LEN=32
 
 list_model_name = [
-    "princeton-nlp/unsup-simcse-bert-base-uncased",
+    # "princeton-nlp/unsup-simcse-bert-base-uncased",
     # "princeton-nlp/unsup-simcse-bert-large-uncased",
-    # "princeton-nlp/unsup-simcse-roberta-base",
-    # "princeton-nlp/unsup-simcse-roberta-large"
+    "princeton-nlp/unsup-simcse-roberta-base",
+    "princeton-nlp/unsup-simcse-roberta-large"
 ]
 
 # model_name = "princeton-nlp/unsup-simcse-bert-base-uncased"
