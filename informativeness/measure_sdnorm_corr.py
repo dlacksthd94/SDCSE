@@ -96,13 +96,13 @@ def experiment(num_sent, n_perturbate_max=9, step_max=9):
     return df.astype(float), dict_norm
 
 DEVICE='cuda'
-BATCH_SIZE=8192
+BATCH_SIZE=4096
 MAX_LEN=32
 
 list_model_name = [
     # "princeton-nlp/unsup-simcse-bert-base-uncased",
     # "princeton-nlp/unsup-simcse-bert-large-uncased",
-    "princeton-nlp/unsup-simcse-roberta-base",
+    # "princeton-nlp/unsup-simcse-roberta-base",
     "princeton-nlp/unsup-simcse-roberta-large"
 ]
 
