@@ -7,6 +7,8 @@ pd.set_option('display.max_rows', 100)
 
 def result_dev(*groupby):
     root_path = os.path.join(os.path.expanduser('~'), 'PAPER/SDCSE/informativeness/', ENCODER, 'result', RESULT_FOLDER)
+    if not os.path.exists(root_path):
+        root_path = os.path.join('/data/chansonglim/', RESULT_FOLDER)
     assert os.path.exists(root_path)
 
     list_result = []
@@ -124,8 +126,6 @@ RESULT_FOLDER = 'backup_eval_dropout_sim1_all'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
 RESULT_FOLDER = 'backup_eval_token_sim2'
 RESULT_FOLDER = 'backup_eval_token_sim1'
-RESULT_FOLDER = '../../../../../../../../../../data/chansonglim/backup_eval_token_sim1'
-RESULT_FOLDER = '.'
 
 result_dev('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w')[0]
 result_eval('mode', 'loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w', 'metric')[1]
