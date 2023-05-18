@@ -50,10 +50,11 @@ class InformativenessNormCorrelation(nn.Module):
     Spearman's rank correlation between the sentences' vector norm and sentence informativeness
     """
     
-    def __init__(self, loss_type):
+    def __init__(self, model_args, data_args):
         super().__init__()
         self.cos = nn.CosineSimilarity(dim=-1)
-        self.loss_type = loss_type
+        self.model_args = model_args
+        self.data_args = data_args
     
     def forward(self, pooler_output, rank=None, group=None):
         loss_norm_informativeness = 0
@@ -95,16 +96,23 @@ class InformativenessNormCorrelation(nn.Module):
                 loss_norm_informativeness += loss_temp
         else:
             num_sent = pooler_output.size(1)
-            n1 = pooler_output[:, range(0, num_sent, 2), :].norm(dim=-1)
-            n2 = pooler_output[:, range(1, num_sent + 1, 2), :].norm(dim=-1)
-            
+            if self.data_args.num_informative_pair == 2:
+                n1 = pooler_output[:, range(0, num_sent, 2), :].norm(dim=-1)
+                n2 = pooler_output[:, range(1, num_sent + 1, 2), :].norm(dim=-1)
+                list_n = [n1, n2]
+            elif self.data_args.num_informative_pair == 1:
+                n = pooler_output[:, 1:, :].norm(dim=-1)
+                list_n = [n]
+            elif self.data_args.num_informative_pair == 0:
+                raise NotImplementedError
+                
             loss_norm_informativeness = 0
-            for n in [n1, n2]:
-                if self.loss_type == 'l1':
+            for n in list_n:
+                if self.model_args.loss_type == 'l1':
                     loss_norm_informativeness += F.l1_loss(n, n.sort()[0])
-                elif self.loss_type == 'sl1':
+                elif self.model_args.loss_type == 'sl1':
                     loss_norm_informativeness += F.smooth_l1_loss(n, n.sort()[0])
-                elif self.loss_type == 'mse':
+                elif self.model_args.loss_type == 'mse':
                     loss_norm_informativeness += F.mse_loss(n, n.sort()[0])
                     
         return loss_norm_informativeness
@@ -182,7 +190,7 @@ def cl_init(cls, config):
     if cls.model_args.pooler_type == "cls":
         cls.mlp = MLPLayer(config)
     cls.sim = Similarity(temp=cls.model_args.temp)
-    cls.infonormcorr = InformativenessNormCorrelation(cls.model_args.loss_type)
+    cls.infonormcorr = InformativenessNormCorrelation(cls.model_args, cls.data_args)
     cls.init_weights()
 
 def cl_forward(cls,
@@ -260,7 +268,7 @@ def cl_forward(cls,
     # z1, z2 = pooler_output[:,0], pooler_output[:,1]
     dict_z = {}
     for i in range(num_sent):
-        dict_z[f'z{i + 1}'] = pooler_output[:, i] 
+        dict_z[f'z{i + 1}'] = pooler_output[:, i]
     
     if group is not None and rank is not None:
         dict_z['z1'] = dict_z['z1'][rank[:, 0].squeeze() == 0]
@@ -319,6 +327,7 @@ def cl_forward(cls,
     loss = loss_fct(cos_sim, labels)# + loss_fct(cos_sim_2, labels)
     
     if cls.model_args.lambda_weight > 0:
+        # self=InformativenessNormCorrelation(model_args, data_args)
         loss_informativeness = cls.infonormcorr(pooler_output, rank, group)
         loss += cls.model_args.lambda_weight * loss_informativeness
             
@@ -389,6 +398,7 @@ class BertForCL(BertPreTrainedModel):
     def __init__(self, config, *model_args, **model_kargs):
         super().__init__(config)
         self.model_args = model_kargs["model_args"]
+        self.data_args = model_kargs["data_args"]
         self.bert = BertModel(config, add_pooling_layer=False)
 
         if self.model_args.do_mlm:
@@ -452,6 +462,7 @@ class RobertaForCL(RobertaPreTrainedModel):
     def __init__(self, config, *model_args, **model_kargs):
         super().__init__(config)
         self.model_args = model_kargs["model_args"]
+        self.data_args = model_kargs["data_args"]
         self.roberta = RobertaModel(config, add_pooling_layer=False)
 
         if self.model_args.do_mlm:

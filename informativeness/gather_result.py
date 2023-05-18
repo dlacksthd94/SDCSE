@@ -19,7 +19,7 @@ def result_dev(*groupby):
                     list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
                     for lambda_w in list_lambda_w:
                         for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
-                            for pt_num in range(1, 4):
+                            for pt_num in range(1, 7):
                                 for pt_step in range(1, 4):
                                     for seed in range(0, 5):
                                         for loss in ['mse', 'l1', 'sl1']:
@@ -53,7 +53,7 @@ def result_eval(*groupby):
     assert os.path.exists(root_path)
 
     dict_result = {}
-    for mode in ['test', 'fasttest']:
+    for mode in ['test']:
         for bs in [64, 128]:
             for lr in [f'1e-{i}' for i in range(4, 5)] + ['3e-5']:
                 for epoch in range(1, 2):
@@ -61,7 +61,7 @@ def result_eval(*groupby):
                         list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
                         for lambda_w in list_lambda_w:
                             for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout']:
-                                for pt_num in range(1, 4):
+                                for pt_num in range(1, 7):
                                     for pt_step in range(1, 4):
                                         for seed in range(0, 5):
                                             for loss in ['l1', 'sl1', 'mse']:
@@ -124,9 +124,9 @@ RESULT_FOLDER = 'backup'
 ENCODER = 'SDCSE'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_all'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
-RESULT_FOLDER = 'backup_eval_token_sim2'
 RESULT_FOLDER = 'backup_eval_token_sim1'
+RESULT_FOLDER = 'backup_eval_token_sim2'
 
-result_dev('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w')[0]
-result_eval('mode', 'loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w', 'metric')[1]
+result_dev('loss', 'pt_type', 'pt_num', 'pt_step', 'pooler', 'lambda_w', 'metric')[1]
+result_eval('mode', 'loss', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'lambda_w')[1]
 0.231301 * 1.96 / 5 ** 0.5

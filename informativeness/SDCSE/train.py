@@ -195,15 +195,24 @@ class DataTrainingArguments:
     # SDCSE's arguments
     perturbation_type: str = field(
         default=None, 
-        metadata={"help": "The type of perturbation applied to sentence tokens."}
+        metadata={"help": "The type of perturbation applied to informative pairs"}
     )
     perturbation_num: int = field(
-        default=0, 
-        metadata={"help": "How many pertrubations for each pair of sentence."}
+        default=2, 
+        metadata={"help": "The number of perturbation applied to informative pairs"}
     )
     perturbation_step: int = field(
-        default=0, 
-        metadata={"help": "The step of perturbations applied to each sentence."}
+        default=1, 
+        metadata={"help": "The step of perturbations applied to informative pairs"}
+    )
+    num_informative_pair: int = field(
+        default=2, 
+        metadata={
+            "help": "The way to construct informative pairs. "
+            "2: create two informative pairs, each of which is corresponded to each sentence example in a positive pair. "
+            "1: create one informative pair just for first sentence example in a positive pair. "
+            "0: use positive pairs as informative pairs."
+        }
     )
 
     def __post_init__(self):
@@ -218,7 +227,15 @@ class DataTrainingArguments:
             assert self.perturbation_type in ['constituency_parsing', 'unk_token', 'mask_token', 'pad_token', 'dropout', 'none']
             if self.perturbation_type == 'none':
                 self.perturbation_type = None
+        
+        if self.perturbation_num > 0 or self.perturbation_step > 0:
+            assert self.perturbation_num * self.perturbation_step <= self.max_seq_length - 2
             
+        if self.num_informative_pair is not None:
+            assert self.num_informative_pair in [2, 1, 0]
+            if self.num_informative_pair == 0:
+                assert self.perturbation_num == 1
+
 
 @dataclass
 class OurTrainingArguments(TrainingArguments):
@@ -285,10 +302,11 @@ class OurTrainingArguments(TrainingArguments):
 # EPOCH=1
 # SEED=0
 # MAX_LEN=32
+# LAMBDA='1e-0'
 # PERTURB_TYPE='mask_token'
 # PERTURB_NUM=2
 # PERTURB_STEP=1
-# LAMBDA='0e-0'
+# NUM_INFO_PAIR=1
 # sys.argv = [
 #     'train.py',
 #     '--model_name_or_path', 'bert-base-uncased',
@@ -303,8 +321,9 @@ class OurTrainingArguments(TrainingArguments):
 #     '--evaluation_strategy', 'steps',
 #     '--metric_for_best_model', 'stsb_spearman',
 #     '--load_best_model_at_end',
-#     '--eval_steps', '32',
-#     '--pooler_type', 'cls_before_pooler',
+#     '--eval_steps', '125',
+#     '--pooler_type', 'cls',
+#     "--mlp_only_train",
 #     '--overwrite_output_dir',
 #     '--temp', '0.05',
 #     '--do_train',
@@ -318,8 +337,9 @@ class OurTrainingArguments(TrainingArguments):
 #     '--perturbation_type', str(PERTURB_TYPE),
 #     '--perturbation_num', str(PERTURB_NUM),
 #     '--perturbation_step', str(PERTURB_STEP), 
+#     '--num_informative_pair', str(NUM_INFO_PAIR),
 # ]
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 # #######################
 
 # def main():
@@ -434,7 +454,8 @@ if model_args.model_name_or_path:
             cache_dir=model_args.cache_dir,
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
-            model_args=model_args                  
+            model_args=model_args,
+            data_args=data_args
         )
     elif 'bert' in model_args.model_name_or_path:
         model = BertForCL.from_pretrained(
@@ -444,7 +465,8 @@ if model_args.model_name_or_path:
             cache_dir=model_args.cache_dir,
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
-            model_args=model_args
+            model_args=model_args,
+            data_args=data_args
         )
         if model_args.do_mlm:
             pretrained_model = BertForPreTraining.from_pretrained(model_args.model_name_or_path)
@@ -521,9 +543,16 @@ def prepare_features(examples):
         if examples[sent1_cname][idx] is None:
             examples[sent1_cname][idx] = " "
     
-    sentences = examples[sent0_cname] + examples[sent1_cname]
-    sentences *= data_args.perturbation_num + 1
-
+    if data_args.num_informative_pair == 2:
+        sentences = examples[sent0_cname] + examples[sent1_cname]
+        sentences *= data_args.perturbation_num + 1
+    elif data_args.num_informative_pair == 1:
+        sentences = examples[sent0_cname] + examples[sent1_cname] * (data_args.perturbation_num + 1)
+    elif data_args.num_informative_pair == 0:
+        sentences = examples[sent0_cname] + examples[sent1_cname]
+    else:
+        raise NotImplementedError
+    
     # If hard negative exists
     if sent2_cname is not None:
         for idx in range(total):
@@ -545,7 +574,7 @@ def prepare_features(examples):
     else:
         for key in sent_features:
             # features[key] = [[sent_features[key][i], sent_features[key][i+total]] for i in range(total)]
-            features[key] = [[sent_features[key][i + total * j] for j in range((data_args.perturbation_num + 1) * 2)] for i in range(total)]
+            features[key] = [[sent_features[key][i + total * j] for j in range(len(sent_features[key]) // total)] for i in range(total)]
     
     if examples.get('group'):
         features['group'] = [[[x]] * 2 for x in examples['group']]
@@ -564,7 +593,8 @@ if training_args.do_train:
         load_from_cache_file=not data_args.overwrite_cache,
     )
 next(iter(train_dataset))
-
+from torch.utils.data import Subset
+features = Subset(train_dataset, range(10))
 
 # Data collator
 @dataclass
@@ -601,7 +631,7 @@ class OurDataCollatorWithPadding:
         
         if data_args.perturbation_type not in [None, 'dropout']:
             # inputs=batch["input_ids"]
-            self.perturbation(inputs=batch["input_ids"], perturbation_type=data_args.perturbation_type)
+            self.perturbation(inputs=batch["input_ids"])
             # inputs[:10][:10]
 
         batch = {k: batch[k].view(bs, num_sent, -1) if k in special_keys else batch[k].view(bs, num_sent, -1)[:, 0] for k in batch}
@@ -649,9 +679,7 @@ class OurDataCollatorWithPadding:
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
     
-    def perturbation(
-        self, inputs: torch.Tensor, perturbation_type: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def perturbation(self, inputs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original.
         """
@@ -671,12 +699,21 @@ class OurDataCollatorWithPadding:
         special_tokens_mask = torch.where(condition[:, None], torch.cat([torch.ones((special_tokens_mask.shape[0], 1)), special_tokens_mask[:, 1:]], dim=1), special_tokens_mask) # a subset of `special_tokens_mask` where all elements are 0 raises an error, so fill their 2nd index with 1.
         list_randint = torch.multinomial(special_tokens_mask, total_perturbation_num, replacement=False)
         
-        size_sentence_pair = (data_args.perturbation_num + 1) * 2
-        for i in range(data_args.perturbation_num):
-            for j in range((i + 1) * data_args.perturbation_step):
-                target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
-                inputs[(i + 1) * 2::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
-                inputs[(i + 1) * 2 + 1::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+        if data_args.num_informative_pair == 2:
+            size_sentence_pair = (data_args.perturbation_num + 1) * 2
+            for i in range(data_args.perturbation_num):
+                for j in range((i + 1) * data_args.perturbation_step):
+                    target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
+                    inputs[(i + 1) * 2::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+                    inputs[(i + 1) * 2 + 1::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+        elif data_args.num_informative_pair == 1:
+            size_sentence_pair = data_args.perturbation_num + 2
+            for i in range(data_args.perturbation_num):
+                for j in range((i + 1) * data_args.perturbation_step):
+                    target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
+                    inputs[i + 2::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+        else:
+            raise NotImplementedError
         return
 
 data_collator = default_data_collator if data_args.pad_to_max_length else OurDataCollatorWithPadding(tokenizer)
@@ -689,7 +726,7 @@ trainer = CLTrainer(
     data_collator=data_collator,
 )
 trainer.model_args = model_args
-train_dataset[:3]
+trainer.data_args = data_args
 
 # Training
 if training_args.do_train:

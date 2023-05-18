@@ -79,7 +79,7 @@ list_encoder="SimCSE DiffCSE PromCSE MCSE SNCSE SDCSE"
 #     done
 #     cd ..
 
-TASK_SET='full' # sts / transfer / full
+TASK_SET='sts' # sts / transfer / full
 MODE='test' # test / dev / fasttest (applied only on transfer tasks)
 RESULT_FOLDER='backup_eval_token_sim2'
 ENCODER='SDCSE'
@@ -90,14 +90,14 @@ for training_method in unsup; do
         for batch_size in 64; do
             for lr in 3e-5; do
                 for epoch in 1; do
-                    for seed in 1; do
+                    for seed in 0 1 2 3 4; do
                         for max_len in 32; do
                             for lambda_weight in 1e-0; do
                                 for PERTURB_TYPE in mask_token; do
-                                    for PERTURB_NUM in 1; do
-                                        for PERTURB_STEP in 2; do
+                                    for PERTURB_NUM in 1 3 4 5 6; do
+                                        for PERTURB_STEP in 1; do
                                             for LOSS in mse; do
-                                                for POOLER in wp; do
+                                                for POOLER in wop; do
                                                     for METRIC in stsb; do
                                                         file_name=${MODE}_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}.txt
                                                         save_folder="result/evaluation/${dict_encoder[${ENCODER}]}/${RESULT_FOLDER}"
