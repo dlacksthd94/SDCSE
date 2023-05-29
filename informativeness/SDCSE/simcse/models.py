@@ -114,6 +114,14 @@ class InformativenessNormCorrelation(nn.Module):
                     loss_norm_informativeness += F.smooth_l1_loss(n, n.sort()[0])
                 elif self.model_args.loss_type == 'mse':
                     loss_norm_informativeness += F.mse_loss(n, n.sort()[0])
+                elif self.model_args.loss_type == 'margin':
+                    assert n.size(1) == 2
+                    n_intact, n_perturbed = n[:, 0], n[:, 1]
+                    labels = torch.ones_like(n[:, 1])
+                    loss_norm_informativeness += F.margin_ranking_loss(n_intact, n_perturbed, labels, margin=self.model_args.margin)
+                else:
+                    raise NotImplementedError
+
                     
         return loss_norm_informativeness
     

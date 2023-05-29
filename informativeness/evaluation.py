@@ -153,6 +153,7 @@ def main():
         # Full mode
         params = {'task_path': PATH_TO_DATA, 'usepytorch': True, 'kfold': 10, 'gpu_id': args.gpu_id}
         params['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64,
+        # params['classifier'] = {'nhid': 0, 'optim': 'adam', 'batch_size': 64 * 10,
                                          'tenacity': 5, 'epoch_size': 4}
     else:
         raise NotImplementedError

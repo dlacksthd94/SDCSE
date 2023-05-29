@@ -134,10 +134,14 @@ class ModelArguments:
         default='l1', 
         metadata={"help": "The type of loss function."}
     )
+    margin: float = field(
+        default=0.3, 
+        metadata={"help": "The margin of margin loss. (only applied when margin loss is used)"}
+    )
     
     def __post_init__(self):
         if self.loss_type is not None:
-            assert self.loss_type in ['l1', 'sl1', 'mse']
+            assert self.loss_type in ['l1', 'sl1', 'mse', 'margin']
 
     
 
@@ -223,18 +227,19 @@ class DataTrainingArguments:
                 extension = self.train_file.split(".")[-1]
                 assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, a json or a txt file."
                 
-        if self.perturbation_type is not None:
+        if self.perturbation_type:
             assert self.perturbation_type in ['constituency_parsing', 'unk_token', 'mask_token', 'pad_token', 'dropout', 'none']
             if self.perturbation_type == 'none':
                 self.perturbation_type = None
-        
+            else:
+                if self.num_informative_pair is not None:
+                    assert self.num_informative_pair in [2, 1, 0]
+                    if self.num_informative_pair == 0:
+                        assert self.perturbation_num == 1
+            
         if self.perturbation_num > 0 or self.perturbation_step > 0:
             assert self.perturbation_num * self.perturbation_step <= self.max_seq_length - 2
-            
-        if self.num_informative_pair is not None:
-            assert self.num_informative_pair in [2, 1, 0]
-            if self.num_informative_pair == 0:
-                assert self.perturbation_num == 1
+
 
 
 @dataclass
@@ -304,9 +309,10 @@ class OurTrainingArguments(TrainingArguments):
 # MAX_LEN=32
 # LAMBDA='1e-0'
 # PERTURB_TYPE='mask_token'
-# PERTURB_NUM=2
+# PERTURB_NUM=1
 # PERTURB_STEP=1
 # NUM_INFO_PAIR=1
+# MARGIN='1e-1'
 # sys.argv = [
 #     'train.py',
 #     '--model_name_or_path', 'bert-base-uncased',
@@ -338,6 +344,7 @@ class OurTrainingArguments(TrainingArguments):
 #     '--perturbation_num', str(PERTURB_NUM),
 #     '--perturbation_step', str(PERTURB_STEP), 
 #     '--num_informative_pair', str(NUM_INFO_PAIR),
+#     '--margin', str(MARGIN),
 # ]
 # os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 # #######################
@@ -689,6 +696,8 @@ class OurDataCollatorWithPadding:
             perturbation_token_id = self.tokenizer.mask_token_id
         elif data_args.perturbation_type == 'pad_token':
             perturbation_token_id = self.tokenizer.pad_token_id
+        else:
+            raise NotImplementedError
         
         special_tokens_mask = [
             self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in inputs[::(data_args.perturbation_num + 1) * 2].tolist()

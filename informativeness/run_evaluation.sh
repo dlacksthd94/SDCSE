@@ -18,8 +18,23 @@ declare -A dict_encoder_modelpath=(
 )
 
 declare -A dict_pooler_method=(
+    ["ap"]="cls"
     ["wp"]="cls_before_pooler"
     ["wop"]="cls_before_pooler"
+)
+
+declare -A dict_plm=(
+    ["bert_base"]="bert-base-uncased"
+    ["bert_large"]="bert-large-uncased"
+    ["roberta_base"]="roberta-base"
+    ["roberta_large"]="roberta-large"
+)
+
+declare -A dict_lr=(
+    ["bert_base"]=3e-5
+    ["bert_large"]=1e-5
+    ["roberta_base"]=1e-5
+    ["roberta_large"]=3e-5
 )
 
 list_encoder="SimCSE DiffCSE PromCSE MCSE SNCSE SDCSE"
@@ -81,51 +96,55 @@ list_encoder="SimCSE DiffCSE PromCSE MCSE SNCSE SDCSE"
 
 TASK_SET='sts' # sts / transfer / full
 MODE='test' # test / dev / fasttest (applied only on transfer tasks)
-RESULT_FOLDER='backup_eval_token_sim2'
 ENCODER='SDCSE'
+RESULT_ROOT_FOLDER=${ENCODER}/result
+# RESULT_ROOT_FOLDER='/data/chansonglim'
+RESULT_FOLDER='backup_eval_token_sim1'
 GPU_ID=2
 
 for training_method in unsup; do
-    for plm in bert; do
+    for plm in bert_base; do
         for batch_size in 64; do
-            for lr in 3e-5; do
+            for lr in ${dict_lr[${plm}]}; do
                 for epoch in 1; do
                     for seed in 0 1 2 3 4; do
                         for max_len in 32; do
-                            for lambda_weight in 1e-0; do
-                                for PERTURB_TYPE in mask_token; do
-                                    for PERTURB_NUM in 1 3 4 5 6; do
-                                        for PERTURB_STEP in 1; do
+                            for lambda_weight in 0e-0; do
+                                for PERTURB_TYPE in none; do
+                                    for PERTURB_NUM in 0; do
+                                        for PERTURB_STEP in 0; do
                                             for LOSS in mse; do
-                                                for POOLER in wop; do
+                                                for POOLER in ap; do
                                                     for METRIC in stsb; do
-                                                        file_name=${MODE}_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}.txt
-                                                        save_folder="result/evaluation/${dict_encoder[${ENCODER}]}/${RESULT_FOLDER}"
-                                                        if [ ! -d ${save_folder} ]; then
-                                                            mkdir ${save_folder}
-                                                        fi
-                                                        echo ${training_method} ${ENCODER} ${plm} ${POOLER} ${batch_size} ${lr} ${epoch} ${seed} ${max_len} ${lambda_weight} ${PERTURB_TYPE} ${PERTURB_NUM} ${PERTURB_STEP} ${LOSS} ${POOLER} ${METRIC}
-                                                        if [ ${ENCODER} = PromCSE ]; then
-                                                            # taskset -c 120-127 \
-                                                            python evaluation.py \
-                                                                --model_name_or_path ${ENCODER}/result/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${plm}-base-uncased_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC} \
-                                                                --pooler ${dict_pooler_method[${POOLER}]} \
-                                                                --task_set ${TASK_SET} \
-                                                                --tasks STS12 \
-                                                                --pre_seq_len 16 \
-                                                                --mode ${MODE} \
-                                                                --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
-                                                        else
-                                                            # taskset -c 120-127 \
-                                                            python evaluation.py \
-                                                                --model_name_or_path ${ENCODER}/result/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${plm}-base-uncased_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC} \
-                                                                --pooler ${dict_pooler_method[${POOLER}]} \
-                                                                --task_set ${TASK_SET} \
-                                                                --tasks STS12 \
-                                                                --mode ${MODE} \
-                                                                --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
-                                                        fi
-                                                        echo
+                                                        for MARGIN in 0e-0; do
+                                                            file_name=${MODE}_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN}.txt
+                                                            save_folder="result/evaluation/${dict_encoder[${ENCODER}]}/${RESULT_FOLDER}"
+                                                            if [ ! -d ${save_folder} ]; then
+                                                                mkdir ${save_folder}
+                                                            fi
+                                                            echo ${training_method} ${ENCODER} ${plm} ${POOLER} ${batch_size} ${lr} ${epoch} ${seed} ${max_len} ${lambda_weight} ${PERTURB_TYPE} ${PERTURB_NUM} ${PERTURB_STEP} ${LOSS} ${POOLER} ${METRIC} ${MARGIN}
+                                                            if [ ${ENCODER} = PromCSE ]; then
+                                                                # taskset -c 120-127 \
+                                                                python evaluation.py \
+                                                                    --model_name_or_path ${RESULT_ROOT_FOLDER}/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${dict_plm[${plm}]}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN} \
+                                                                    --pooler ${dict_pooler_method[${POOLER}]} \
+                                                                    --task_set ${TASK_SET} \
+                                                                    --tasks STS12 \
+                                                                    --pre_seq_len 16 \
+                                                                    --mode ${MODE} \
+                                                                    --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
+                                                            else
+                                                                # taskset -c 120-127 \
+                                                                python evaluation.py \
+                                                                    --model_name_or_path ${RESULT_ROOT_FOLDER}/${RESULT_FOLDER}/my-${training_method}-${dict_encoder[${ENCODER}]}-${dict_plm[${plm}]}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN} \
+                                                                    --pooler ${dict_pooler_method[${POOLER}]} \
+                                                                    --task_set ${TASK_SET} \
+                                                                    --tasks STS12 \
+                                                                    --mode ${MODE} \
+                                                                    --gpu_id ${GPU_ID} > ${save_folder}/${file_name}
+                                                            fi
+                                                            echo
+                                                        done
                                                     done
                                                 done
                                             done
