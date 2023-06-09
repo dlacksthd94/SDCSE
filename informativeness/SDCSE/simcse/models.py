@@ -174,17 +174,18 @@ class Pooler(nn.Module):
 
 
 class CustomDropout(nn.Module):
-    def __init__(self, dict_dropout, perturbation_num):
+    def __init__(self, dict_dropout):
         super(CustomDropout, self).__init__()
-        self.perturbation_num = perturbation_num
+        self.dict_dropout = dict_dropout
         self.dropout = nn.Dropout(0.1)
-        for i in range(perturbation_num + 1):
+        for i in range(len(dict_dropout)):
             setattr(self, f'dropout_{i}', nn.Dropout(dict_dropout[f'dropout_{i}']))
         
     def forward(self, x):
         out = x.clone()
-        for i in range(self.perturbation_num + 1):
-            out[i::self.perturbation_num + 1, 1:, :] = getattr(self, f'dropout_{i}')(x[i::self.perturbation_num + 1, 1:, :])
+        for i in range(len(self.dict_dropout)):
+            dropout_i = getattr(self, f'dropout_{i}')
+            out[i::len(self.dict_dropout), 1:, :] = dropout_i(x[i::len(self.dict_dropout), 1:, :])
         out[:, 0, :] = self.dropout(out[:, 0, :])
         return out
 

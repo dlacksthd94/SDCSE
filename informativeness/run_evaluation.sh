@@ -103,16 +103,16 @@ RESULT_FOLDER='backup_eval_token_sim1'
 GPU_ID=2
 
 for training_method in unsup; do
-    for plm in bert_base; do
-        for batch_size in 64; do
+    for plm in roberta_base; do
+        for batch_size in 128; do
             for lr in ${dict_lr[${plm}]}; do
                 for epoch in 1; do
                     for seed in 0 1 2 3 4; do
                         for max_len in 32; do
-                            for lambda_weight in 0e-0; do
-                                for PERTURB_TYPE in none; do
-                                    for PERTURB_NUM in 0; do
-                                        for PERTURB_STEP in 0; do
+                            for lambda_weight in 1e-0 1e-1 1e-2; do
+                                for PERTURB_TYPE in mask_token; do
+                                    for PERTURB_NUM in 1; do
+                                        for PERTURB_STEP in 1 3; do
                                             for LOSS in mse; do
                                                 for POOLER in ap; do
                                                     for METRIC in stsb; do

@@ -10,31 +10,86 @@ import os
 # BERT 모델 불러오기
 model_name = 'princeton-nlp/unsup-simcse-bert-base-uncased'
 # model_name = 'princeton-nlp/unsup-simcse-bert-large-uncased'
-# model_name = 'bert-base-uncased'
+# model_name = 'princeton-nlp/unsup-simcse-roberta-base'
+# model_name = 'princeton-nlp/unsup-simcse-roberta-large'
+model_name = 'bert-base-uncased'
+model_name = os.path.join(os.getcwd(), 'result', 'mask0/')
+model_name = os.path.join(os.getcwd(), 'result', 'mask0_cls0/')
+model_name = os.path.join(os.getcwd(), 'result', 'mask0_cls0_sep0/')
+model_name = os.path.join(os.getcwd(), 'result', 'mask0_sep0/')
 # model_name = 'bert-large-uncased'
+
 model = AutoModel.from_pretrained(model_name)
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-# list_sentence = [
-#     'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.',
-#     'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework.',
-#     'Unsupervised SimCSE simply takes an input sentence'
-# ]
+model.embeddings.word_embeddings.weight[100].norm() # unk 100, cls 101, sep 102, mask 103, pad 0
+model.embeddings.word_embeddings.weight[101].norm() # unk 100, cls 101, sep 102, mask 103, pad 0
+model.embeddings.word_embeddings.weight[102].norm() # unk 100, cls 101, sep 102, mask 103, pad 0
+model.embeddings.word_embeddings.weight[103].norm() # unk 100, cls 101, sep 102, mask 103, pad 0
+(model.embeddings.word_embeddings.weight[100] / 100).norm()
+
 list_sentence = [
-    'x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x', 
-    'x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x', 
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.',
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework.',
+    'Unsupervised SimCSE simply takes an input sentence',
+    '----------',
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.',
+    'Unsupervised [MASK] simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as [MASK].',
+    'Unsupervised [MASK] simply takes an input sentence and [MASK] itself in a contrastive learning framework, with only [MASK] dropout used as [MASK].',
+    '----------',
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.',
+    'Unsupervised [UNK] simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as [UNK].',
+    'Unsupervised [UNK] simply takes an input sentence and [UNK] itself in a contrastive learning framework, with only [UNK] dropout used as [UNK].',
+    '----------',
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.',
+    'Unsupervised [PAD] simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as [PAD].',
+    'Unsupervised [PAD] simply takes an input sentence and [PAD] itself in a contrastive learning framework, with only [PAD] dropout used as [PAD].',
+    '----------',
+    '----------',
+    'Chelsea have signed one of the biggest attacking talents on the planet.',
+    'Chelsea have signed one of the biggest attacking talents.',
+    'Chelsea have signed attacking talents.',
+    '----------',
+    'Chelsea have signed one of the biggest attacking talents on the planet.',
+    'Chelsea have signed [MASK] of the biggest attacking talents on the planet.',
+    'Chelsea have signed [MASK] of the biggest [MASK] talents on the planet.',
+    '----------',
+    'Chelsea have signed one of the biggest attacking talents on the planet.',
+    'Chelsea have signed [UNK] of the biggest attacking talents on the planet.',
+    'Chelsea have signed [UNK] of the biggest [UNK] talents on the planet.',
+    '----------',
+    'Chelsea have signed one of the biggest attacking talents on the planet.',
+    'Chelsea have signed [PAD] of the biggest attacking talents on the planet.',
+    'Chelsea have signed [PAD] of the biggest [PAD] talents on the planet.',
+    '----------',
+    '----------',
+    'x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x',
+    'x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x',
     'x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x',
     'x x x x x x x x x x x x x x x x x x x x',
-    'x x x x x x x x x x'
+    'x x x x x x x x x x',
+    '----------',
+    '----------',
+    '[MASK]',
+    '[UNK]',
+    '[PAD]',
+    '<mask>',
+    '<unk>',
+    '<pad>',
 ]
 
+sent = '[MASK]'
 for sent in list_sentence:
-    input = tokenizer(sent, return_tensors='pt')
-    output = model(**input, return_dict=True)
-    # cos_sim = cosine_similarity(output.last_hidden_state.squeeze().detach().numpy()).round(2)
-    # cos_sim.mean()
-    norm = output.last_hidden_state[:, 0, :].squeeze().norm().item()
-    norm
+    if sent != '----------':
+        input = tokenizer(sent, return_tensors='pt')
+        output = model(**input, return_dict=True)
+        # cos_sim = cosine_similarity(output.last_hidden_state.squeeze().detach().numpy()).round(2)
+        # cos_sim.mean()
+        norm_wop = output.last_hidden_state[:, 0, :].squeeze().norm().item()
+        norm_wp = output.pooler_output.squeeze().norm().item()
+        norm_wop, norm_wp
+    else:
+        '----------'
 
 A = model.encoder.layer[11].attention.self.query.weight#[:96, :96]
 B = model.encoder.layer[11].attention.self.key.weight#[:96, :96]

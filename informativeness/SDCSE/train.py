@@ -308,11 +308,11 @@ class OurTrainingArguments(TrainingArguments):
 # SEED=0
 # MAX_LEN=32
 # LAMBDA='1e-0'
-# PERTURB_TYPE='mask_token'
-# PERTURB_NUM=1
-# PERTURB_STEP=1
+# PERTURB_TYPE='dropout'
+# PERTURB_NUM=3
+# PERTURB_STEP=3
 # NUM_INFO_PAIR=1
-# MARGIN='1e-1'
+# MARGIN='0e-0'
 # sys.argv = [
 #     'train.py',
 #     '--model_name_or_path', 'bert-base-uncased',
@@ -488,7 +488,11 @@ else:
 model.resize_token_embeddings(len(tokenizer))
 
 if data_args.perturbation_type == 'dropout':
-    dict_dropout = {f'dropout_{i}': round(0.1 + 0.1 * data_args.perturbation_step * i, 4) for i in range(data_args.perturbation_num + 1)}
+    if data_args.num_informative_pair == 2:
+        dict_dropout = {f'dropout_{i}': round(0.1 + 0.1 * data_args.perturbation_step * i, 4) for i in range(data_args.perturbation_num + 1)}
+    elif data_args.num_informative_pair == 1:
+        dict_dropout = {f'dropout_{i}': round(0.1 + 0.1 * data_args.perturbation_step * (i - 1), 4) for i in range(1, data_args.perturbation_num + 2)}
+        dict_dropout['dropout_0'] = 0.1
     dropout_layer_names = []
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Dropout):
@@ -496,7 +500,7 @@ if data_args.perturbation_type == 'dropout':
     dropout_layer_names
 
     # 드롭아웃 레이어 변경
-    custom_dropout = CustomDropout(dict_dropout, data_args.perturbation_num)
+    custom_dropout = CustomDropout(dict_dropout)
     for name in dropout_layer_names:
         if name.startswith('bert.embeddings'):
             model.bert.embeddings.dropout = custom_dropout
@@ -506,7 +510,16 @@ if data_args.perturbation_type == 'dropout':
             model.bert.encoder.layer[n].attention.output.dropout = custom_dropout
             model.bert.encoder.layer[n].output.dropout = custom_dropout
     model
-
+# elif data_args.perturbation_type in ['mask_token', 'unk_token']:
+#     dict_token = {
+#         'mask_token': '[MASK]',
+#         'unk_token': '[UNK]',
+#     }
+#     token_id = tokenizer.convert_tokens_to_ids(dict_token[data_args.perturbation_type])
+#     model.bert.embeddings.word_embeddings.weight.data[token_id] = torch.zeros(model.bert.embeddings.word_embeddings.embedding_dim)
+#     # model.bert.embeddings.word_embeddings.weight.data[101] = torch.zeros(model.bert.embeddings.word_embeddings.embedding_dim) # make cls 0
+#     model.bert.embeddings.word_embeddings.weight.data[102] = torch.zeros(model.bert.embeddings.word_embeddings.embedding_dim) # make sep 0
+#     # model.bert.embeddings.word_embeddings.weight.data[103].norm() # unk 100, cls 101, sep 102, mask 103, pad 0
 
 # Prepare features
 column_names = datasets["train"].column_names

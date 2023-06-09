@@ -45,18 +45,21 @@ declare -A dict_lr=(
     ["roberta_large"]=3e-5
 )
 
-for PLM in bert_base; do
-    for BATCH_SIZE in 64; do
+RESULT_ROOT_FOLDER='.'
+# RESULT_ROOT_FOLDER='/data1/chansonglim'
+
+for PLM in roberta_base; do
+    for BATCH_SIZE in 128; do
         for LR in ${dict_lr[${PLM}]}; do
             for EPOCH in 1; do
                 for SEED in 0 1 2 3 4; do
                     for MAX_LEN in 32; do
-                        for LAMBDA in 0e-0; do
-                            for PERTURB_TYPE in none; do
-                                for PERTURB_NUM in 0; do
-                                    for PERTURB_STEP in 0; do
+                        for LAMBDA in 1e-0; do
+                            for PERTURB_TYPE in dropout; do
+                                for PERTURB_NUM in 1 3; do
+                                    for PERTURB_STEP in 1 3; do
                                         for LOSS in mse; do
-                                            for POOLER in ap; do
+                                            for POOLER in wp; do
                                                 for METRIC in stsb; do
                                                     for SIM in 1; do
                                                         for MARGIN in 0e-0; do
@@ -64,7 +67,7 @@ for PLM in bert_base; do
                                                             python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
                                                                 --model_name_or_path ${dict_plm[${PLM}]} \
                                                                 --train_file data/wiki1m_for_simcse.txt \
-                                                                --output_dir result/my-unsup-sdcse-${dict_plm[${PLM}]}_${BATCH_SIZE}_${LR}_${EPOCH}_${SEED}_${MAX_LEN}_${LAMBDA}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN} \
+                                                                --output_dir ${RESULT_ROOT_FOLDER}/result/my-unsup-sdcse-${dict_plm[${PLM}]}_${BATCH_SIZE}_${LR}_${EPOCH}_${SEED}_${MAX_LEN}_${LAMBDA}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN} \
                                                                 --num_train_epochs ${EPOCH} \
                                                                 --per_device_train_batch_size ${BATCH_SIZE} \
                                                                 --learning_rate ${LR} \

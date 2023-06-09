@@ -23,19 +23,20 @@ def result_dev(*groupby):
     root_path = os.path.join(os.path.expanduser('~'), 'PAPER/SDCSE/informativeness/', ENCODER, 'result', RESULT_FOLDER)
     
     list_result = []
-    for plm in ['bert_base', 'bert_large']:
+    for plm in ['bert_base', 'bert_large', 'roberta_base', 'roberta_large']:
         for bs in [64, 128]:
         # for bs in [64]:
             for lr in [f'1e-{i}' for i in range(4, 6)] + ['3e-5']:
             # for lr in [dict_lr[plm]]:
                 for epoch in range(1, 2):
                     for max_len in [32]:
-                        list_lambda_w = ['0e-0', '2e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                        # list_lambda_w = ['0e-0', '2e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                        list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 3)]
                         for lambda_w in list_lambda_w:
                             # for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
-                            for pt_type in ['mask_token', 'dropout', 'none']:
-                                for pt_num in range(0, 4):
-                                    for pt_step in range(0, 4):
+                            for pt_type in ['mask_token', 'unk_token', 'dropout', 'none']:
+                                for pt_num in [0, 1, 3]:
+                                    for pt_step in [0, 1, 3]:
                                         for seed in range(0, 5):
                                             # for loss in ['l1', 'sl1', 'mse', 'margin']:
                                             for loss in ['mse', 'margin']:
@@ -49,7 +50,7 @@ def result_dev(*groupby):
                                                                     root_path_another = os.path.join(os.path.expanduser('~'), 'PAPER/SDCSE/informativeness/', ENCODER, 'result')
                                                                     result_path = os.path.join(root_path_another, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}', 'eval_results.txt')
                                                                 if not os.path.exists(result_path):
-                                                                    root_path_another = os.path.join('/data/chansonglim/', RESULT_FOLDER)
+                                                                    root_path_another = os.path.join('/data1/chansonglim/', RESULT_FOLDER)
                                                                     result_path = os.path.join(root_path_another, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}', 'eval_results.txt')
                                                                 # if not os.path.exists(result_path):
                                                                 #     result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}', 'eval_results.txt')
@@ -76,7 +77,7 @@ def result_eval(*groupby):
     assert os.path.exists(root_path)
 
     dict_result = {}
-    for plm in ['bert_base', 'bert_large']:
+    for plm in ['bert_base', 'bert_large', 'roberta_base', 'roberta_large']:
         for mode in ['fasttest', 'test']:
             for bs in [64, 128]:
             # for bs in [64]:
@@ -84,12 +85,13 @@ def result_eval(*groupby):
                 # for lr in [dict_lr[plm]]:
                     for epoch in range(1, 2):
                         for max_len in [32]:
+                            list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 3)]
                             list_lambda_w = ['0e-0', '2e-0'] + [f'1e-{i}' for i in range(0, 3)]
                             for lambda_w in list_lambda_w:
                                 # for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
-                                for pt_type in ['mask_token', 'dropout', 'none']:
-                                    for pt_num in range(0, 4):
-                                        for pt_step in range(0, 4):
+                                for pt_type in ['mask_token', 'unk_token', 'dropout', 'none']:
+                                    for pt_num in [0, 1, 3]:
+                                        for pt_step in [0, 1, 3]:
                                             for seed in range(0, 5):
                                                 # for loss in ['l1', 'sl1', 'mse', 'margin']:
                                                 for loss in ['mse', 'margin']:
@@ -157,6 +159,6 @@ RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
 RESULT_FOLDER = 'backup_eval_token_sim1'
 # RESULT_FOLDER = 'backup_eval_token_sim2'
 
-result_dev('plm', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
-result_eval('plm', 'mode', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
+# result_dev('plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
+result_eval('mode', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
 0.231301 * 1.96 / 5 ** 0.5
