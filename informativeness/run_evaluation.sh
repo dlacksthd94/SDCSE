@@ -99,7 +99,9 @@ MODE='test' # test / dev / fasttest (applied only on transfer tasks)
 ENCODER='SDCSE'
 RESULT_ROOT_FOLDER=${ENCODER}/result
 # RESULT_ROOT_FOLDER='/data/chansonglim'
-RESULT_FOLDER='backup_eval_token_sim1'
+# RESULT_FOLDER='backup_eval_token_sim1'
+# RESULT_FOLDER='backup_eval_dropout_sim1_nocls'
+RESULT_FOLDER='backup_eval_dropout_sim0_nocls'
 GPU_ID=2
 
 for training_method in unsup; do
@@ -109,14 +111,14 @@ for training_method in unsup; do
                 for epoch in 1; do
                     for seed in 0 1 2 3 4; do
                         for max_len in 32; do
-                            for lambda_weight in 1e-0 1e-1 1e-2; do
-                                for PERTURB_TYPE in mask_token; do
+                            for lambda_weight in 1e-0; do
+                                for PERTURB_TYPE in dropout; do
                                     for PERTURB_NUM in 1; do
-                                        for PERTURB_STEP in 1 3; do
-                                            for LOSS in mse; do
-                                                for POOLER in ap; do
+                                        for PERTURB_STEP in 1 2 3; do
+                                            for LOSS in margin; do
+                                                for POOLER in wp; do
                                                     for METRIC in stsb; do
-                                                        for MARGIN in 0e-0; do
+                                                        for MARGIN in 1e-0 1e-1; do
                                                             file_name=${MODE}_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN}.txt
                                                             save_folder="result/evaluation/${dict_encoder[${ENCODER}]}/${RESULT_FOLDER}"
                                                             if [ ! -d ${save_folder} ]; then

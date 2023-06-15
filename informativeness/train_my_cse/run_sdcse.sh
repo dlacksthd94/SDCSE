@@ -2,11 +2,6 @@
 
 cd ../SDCSE
 
-# In this example, we show how to train SimCSE using multiple GPU cards and PyTorch's distributed data parallel on supervised NLI dataset.
-# Set how many GPUs to use
-
-NUM_GPU=4
-
 # Randomly set a port number
 # If you encounter "address already used" error, just run again or manually set an available port id.
 PORT_ID=$(expr $RANDOM + 1000)
@@ -48,21 +43,27 @@ declare -A dict_lr=(
 RESULT_ROOT_FOLDER='.'
 # RESULT_ROOT_FOLDER='/data1/chansonglim'
 
+# In this example, we show how to train SimCSE using multiple GPU cards and PyTorch's distributed data parallel on supervised NLI dataset.
+# Set how many GPUs to use
+
+NUM_GPU=1
+
 for PLM in roberta_base; do
     for BATCH_SIZE in 128; do
         for LR in ${dict_lr[${PLM}]}; do
             for EPOCH in 1; do
                 for SEED in 0 1 2 3 4; do
                     for MAX_LEN in 32; do
-                        for LAMBDA in 1e-0; do
+                        for LAMBDA in 1e-1; do
                             for PERTURB_TYPE in dropout; do
-                                for PERTURB_NUM in 1 3; do
-                                    for PERTURB_STEP in 1 3; do
-                                        for LOSS in mse; do
+                                for PERTURB_NUM in 1; do
+                                    for PERTURB_STEP in 1 2; do
+                                        for LOSS in margin; do
                                             for POOLER in wp; do
                                                 for METRIC in stsb; do
-                                                    for SIM in 1; do
-                                                        for MARGIN in 0e-0; do
+                                                    for SIM in 0; do
+                                                        for MARGIN in 1e-0 1e-1; do
+                                                            CUDA_VISIBLE_DEVICES=2 \
                                                             taskset -c 120-127 \
                                                             python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
                                                                 --model_name_or_path ${dict_plm[${PLM}]} \

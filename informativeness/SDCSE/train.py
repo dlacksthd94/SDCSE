@@ -302,24 +302,31 @@ class OurTrainingArguments(TrainingArguments):
         return device
 
 # #######################
-# BATCH_SIZE=64
+# dict_plm = {
+#     'bert_base': 'bert-base-uncased',
+#     'bert_large': 'bert-large-uncased',
+#     'roberta_base': 'roberta-base',
+#     'roberta_large': 'roberta-large',
+# }
+# PLM='roberta_base'
+# BATCH_SIZE=128
 # LR='3e-5'
 # EPOCH=1
 # SEED=0
 # MAX_LEN=32
 # LAMBDA='1e-0'
 # PERTURB_TYPE='dropout'
-# PERTURB_NUM=3
-# PERTURB_STEP=3
-# NUM_INFO_PAIR=1
+# PERTURB_NUM=1
+# PERTURB_STEP=1
+# NUM_INFO_PAIR=0
 # MARGIN='0e-0'
 # sys.argv = [
 #     'train.py',
-#     '--model_name_or_path', 'bert-base-uncased',
-#     # '--model_name_or_path', 'result/my-unsup-simcse-bert-base-uncased_256_1e-4_1_0_32',
+#     '--model_name_or_path', dict_plm[PLM],
+#     # '--model_name_or_path', f'result/my-unsup-simcse-{dict_plm[PLM]}_256_1e-4_1_0_32',
 #     '--train_file', 'data/wiki1m_for_simcse.txt',
 #     # '--train_file', '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
-#     '--output_dir', f'result/my-unsup-sdcse-bert-base-uncased_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
+#     '--output_dir', f'result/my-unsup-sdcse-{dict_plm[PLM]}_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
 #     '--num_train_epochs', str(EPOCH),
 #     '--per_device_train_batch_size', str(BATCH_SIZE),
 #     '--learning_rate', LR,
@@ -493,6 +500,13 @@ if data_args.perturbation_type == 'dropout':
     elif data_args.num_informative_pair == 1:
         dict_dropout = {f'dropout_{i}': round(0.1 + 0.1 * data_args.perturbation_step * (i - 1), 4) for i in range(1, data_args.perturbation_num + 2)}
         dict_dropout['dropout_0'] = 0.1
+    elif data_args.num_informative_pair == 0:
+        dict_dropout = {
+            'dropout_0': 0.1,
+            'dropout_1': 0.1 + 0.1 * data_args.perturbation_step
+        }
+    else:
+        raise NotImplementedError
     dropout_layer_names = []
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Dropout):
@@ -501,14 +515,16 @@ if data_args.perturbation_type == 'dropout':
 
     # 드롭아웃 레이어 변경
     custom_dropout = CustomDropout(dict_dropout)
+    plm_name = model_args.model_name_or_path.split('-')[0]
     for name in dropout_layer_names:
-        if name.startswith('bert.embeddings'):
-            model.bert.embeddings.dropout = custom_dropout
-        elif name.startswith('bert.encoder'):
+        plm = getattr(model, plm_name)
+        if name.startswith(f'{plm_name}.embeddings'):
+            plm.embeddings.dropout = custom_dropout
+        elif name.startswith(f'{plm_name}.encoder'):
             n = int(name.split('.')[3])
-            model.bert.encoder.layer[n].attention.self.dropout = custom_dropout
-            model.bert.encoder.layer[n].attention.output.dropout = custom_dropout
-            model.bert.encoder.layer[n].output.dropout = custom_dropout
+            plm.encoder.layer[n].attention.self.dropout = custom_dropout
+            plm.encoder.layer[n].attention.output.dropout = custom_dropout
+            plm.encoder.layer[n].output.dropout = custom_dropout
     model
 # elif data_args.perturbation_type in ['mask_token', 'unk_token']:
 #     dict_token = {

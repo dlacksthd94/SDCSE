@@ -104,6 +104,9 @@ class InformativenessNormCorrelation(nn.Module):
                 n = pooler_output[:, 1:, :].norm(dim=-1)
                 list_n = [n]
             elif self.data_args.num_informative_pair == 0:
+                n = pooler_output.norm(dim=-1)
+                list_n = [n]
+            else:
                 raise NotImplementedError
                 
             loss_norm_informativeness = 0

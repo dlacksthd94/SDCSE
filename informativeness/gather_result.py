@@ -25,25 +25,26 @@ def result_dev(*groupby):
     list_result = []
     for plm in ['bert_base', 'bert_large', 'roberta_base', 'roberta_large']:
         for bs in [64, 128]:
-        # for bs in [64]:
-            for lr in [f'1e-{i}' for i in range(4, 6)] + ['3e-5']:
-            # for lr in [dict_lr[plm]]:
+            # for lr in [f'1e-{i}' for i in range(4, 6)] + ['3e-5']:
+            for lr in [dict_lr[plm]]:
                 for epoch in range(1, 2):
                     for max_len in [32]:
                         # list_lambda_w = ['0e-0', '2e-0'] + [f'1e-{i}' for i in range(0, 3)]
-                        list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                        list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
                         for lambda_w in list_lambda_w:
                             # for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
-                            for pt_type in ['mask_token', 'unk_token', 'dropout', 'none']:
-                                for pt_num in [0, 1, 3]:
-                                    for pt_step in [0, 1, 3]:
+                            for pt_type in ['mask_token', 'dropout', 'none']:
+                                # for pt_num in [0, 1, 2, 3]:
+                                for pt_num in [0, 1]:
+                                    for pt_step in [0, 1, 2, 3, 4, 5]:
                                         for seed in range(0, 5):
                                             # for loss in ['l1', 'sl1', 'mse', 'margin']:
                                             for loss in ['mse', 'margin']:
                                                 for pooler in ['wp', 'ap', 'wop']:
+                                                # for pooler in ['wp']:
                                                     # for metric in ['stsb', 'sickr', 'sts', 'transfer']:for metric in ['stsb', 'sickr', 'sts', 'transfer']:
                                                     for metric in ['stsb']:
-                                                        for margin in ['0e-0', '1e-0', '1e-1', '1e-2']:
+                                                        for margin in ['0e-0', '1e-0', '1e-1']:
                                                             try:
                                                                 result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}', 'eval_results.txt')
                                                                 if not os.path.exists(result_path):
@@ -80,25 +81,25 @@ def result_eval(*groupby):
     for plm in ['bert_base', 'bert_large', 'roberta_base', 'roberta_large']:
         for mode in ['fasttest', 'test']:
             for bs in [64, 128]:
-            # for bs in [64]:
-                for lr in [f'1e-{i}' for i in range(4, 6)] + ['3e-5']:
-                # for lr in [dict_lr[plm]]:
+                # for lr in [f'1e-{i}' for i in range(4, 6)] + ['3e-5']:
+                for lr in [dict_lr[plm]]:
                     for epoch in range(1, 2):
                         for max_len in [32]:
-                            list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 3)]
-                            list_lambda_w = ['0e-0', '2e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                            # list_lambda_w = ['0e-0', '2e-0'] + [f'1e-{i}' for i in range(0, 3)]
+                            list_lambda_w = ['0e-0'] + [f'1e-{i}' for i in range(0, 2)]
                             for lambda_w in list_lambda_w:
                                 # for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
-                                for pt_type in ['mask_token', 'unk_token', 'dropout', 'none']:
-                                    for pt_num in [0, 1, 3]:
-                                        for pt_step in [0, 1, 3]:
+                                for pt_type in ['mask_token', 'dropout', 'none']:
+                                    for pt_num in [0, 1]:
+                                        for pt_step in [0, 1, 2, 3, 4, 5]:
                                             for seed in range(0, 5):
                                                 # for loss in ['l1', 'sl1', 'mse', 'margin']:
                                                 for loss in ['mse', 'margin']:
                                                     for pooler in ['wp', 'ap', 'wop']:
+                                                    # for pooler in ['wp']:
                                                         # for metric in ['stsb', 'sickr', 'sts', 'transfer']:
                                                         for metric in ['stsb']:
-                                                            for margin in ['0e-0', '1e-0', '1e-1', '1e-2']:
+                                                            for margin in ['0e-0', '1e-0', '1e-1']:
                                                                 try:
                                                                     if ENCODER == 'SimCSE':
                                                                         result_path = os.path.join(root_path, f'{mode}_unsup_{ENCODER.lower()}_{plm}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{pooler}_{metric}_{margin}.txt')
@@ -156,9 +157,9 @@ RESULT_FOLDER = 'backup'
 ENCODER = 'SDCSE'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_all'
 RESULT_FOLDER = 'backup_eval_dropout_sim1_nocls'
-RESULT_FOLDER = 'backup_eval_token_sim1'
+RESULT_FOLDER = 'backup_eval_dropout_sim0_nocls'
+# RESULT_FOLDER = 'backup_eval_token_sim1'
 # RESULT_FOLDER = 'backup_eval_token_sim2'
 
-# result_dev('plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
-result_eval('mode', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
-0.231301 * 1.96 / 5 ** 0.5
+result_dev('plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
+# result_eval('mode', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
