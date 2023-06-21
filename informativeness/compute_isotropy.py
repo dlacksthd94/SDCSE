@@ -12,26 +12,31 @@ import pickle
 import random
 import pandas as pd
 import json
+from transformers import BertModel, AutoTokenizer, AutoModel
 
-BATCH_SIZE = 1024
+BATCH_SIZE = 64
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 MAX_LEN = 32
-POOLER_METHOD = 'wop'
+POOLER_METHOD = 'wp'
+NUM_DATA = 100000
 
 with open(os.path.join(os.getcwd(), "data", "wiki1m_for_simcse.txt"), "r") as f:
     list_text = f.readlines()
 len(list_text)
-list_text = random.sample(list_text, 20000)
+list_text = random.sample(list_text, NUM_DATA)
 
-list_encoder = ['simcse', 'diffcse', 'promcse', 'scd']
 list_plm = ['bert', 'roberta']
 list_size = ['base', 'large']
-list_score = ['mean', 'std', '>0.2', '>0.4', '>0.6', 'iso', 'cos', 'uni', 'pdist', 'pdist_norm', 'norm_mean', 'norm_std']
+list_score = ['mean', 'mean_std', 'std', '>0.5', '>1.0', 'iso', 'cos', 'uni', 'pdist', 'pdist_norm', 'norm_mean', 'norm_std']
 
 with open('model_meta_data.json', 'r') as f:
     dict_model = json.load(f)
+    list_encoder_to_remove = ['diffcse', 'promcse', 'scd']
+    # list_encoder_to_remove = ['promcse', 'scd']
+    for encoder in list_encoder_to_remove:
+        dict_model.pop(encoder) 
 
-df = pd.DataFrame(columns=pd.MultiIndex.from_product([list_encoder, list_plm, list_size]), index=list_score)
+df = pd.DataFrame(columns=pd.MultiIndex.from_product([dict.keys(), list_plm, list_size]), index=list_score)
 
 def align_loss(x, y, alpha=2):
     return (x - y).norm(p=2, dim=1).pow(alpha).mean()
@@ -39,69 +44,71 @@ def align_loss(x, y, alpha=2):
 def uniform_loss(x, t=2):
     return torch.pdist(x, p=2).pow(2).mul(-t).exp().mean().log()
 
-for encoder in list_encoder:
-    for plm in list_plm:
-        for size in list_size:
+encoder, plm, size = 'simcse', 'roberta', 'large'
+for encoder in tqdm(dict_model):
+    for plm in tqdm(dict_model[encoder], leave=False):
+        for size in tqdm(dict_model[encoder][plm], leave=False):
             try:
                 encoder, plm, size
-                model_name = dict_model[encoder][plm][size]
-                wrapper = SimCSE(model_name)
+                model_path = dict_model[encoder][plm][size]
                 
-                tokenizer = wrapper.tokenizer
-                model = wrapper.model
-                _ = model.train()
-                model.training
+                model = AutoModel.from_pretrained(model_path)
+                tokenizer = AutoTokenizer.from_pretrained(model_path)
+
                 if torch.cuda.device_count() > 1:
                     model = DataParallel(model)
-                    BATCH_SIZE *= torch.cuda.device_count()
+                    batch_size = BATCH_SIZE * torch.cuda.device_count()
+                else:
+                    batch_size = int(BATCH_SIZE)
                 _ = model.to(DEVICE)
                 
+                list_batch = [list_text[i:i+batch_size] for i in range(0, len(list_text), batch_size)]
+                len(list_batch)
+
+                def func(batch):
+                    tokenized_input = tokenizer(batch, padding=True, truncation=True, max_length=MAX_LEN, return_tensors="pt")
+                    tokenized_input = {k: v.to(DEVICE) for k, v in tokenized_input.items()}
+                    output = model(**tokenized_input, return_dict=True)
+                    if POOLER_METHOD == "ap":
+                        output = output.pooler_output
+                    elif POOLER_METHOD == "wp":
+                        output = output.last_hidden_state[:, 0]
+                    return output.cpu().detach()
+
                 embedding_list = []
-                with torch.no_grad():
-                    total_batch = len(list_text) // BATCH_SIZE + (1 if len(list_text) % BATCH_SIZE > 0 else 0)
-                    for batch_id in tqdm(range(total_batch)):
-                        inputs = tokenizer(
-                            list_text[batch_id*BATCH_SIZE:(batch_id+1)*BATCH_SIZE], 
-                            padding=True, 
-                            truncation=True, 
-                            max_length=MAX_LEN, 
-                            return_tensors="pt"
-                        )
-                        inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
-                        outputs = model(**inputs, return_dict=True)
-                        if POOLER_METHOD == "wp":
-                            embeddings = outputs.pooler_output
-                        elif POOLER_METHOD == "wop":
-                            embeddings = outputs.last_hidden_state[:, 0]
-                        else:
-                            raise NotImplementedError
-                        # if normalize_to_unit:
-                        #     embeddings = embeddings / embeddings.norm(dim=1, keepdim=True)
-                        embedding_list.append(embeddings.cpu())
+                for batch in tqdm(list_batch, leave=False):
+                    output = func(batch)
+                    embedding_list.append(output)
                 embeddings = torch.cat(embedding_list, 0)
                 
                 embeddings_mean = embeddings.mean(dim=0)
                 embeddings_mean_total = embeddings_mean.mean().item()
-                over_2 = sum(abs(embeddings_mean) >= 0.2).item()
-                over_4 = sum(abs(embeddings_mean) >= 0.4).item()
-                over_6 = sum(abs(embeddings_mean) >= 0.6).item()
+                embeddings_mean_std = embeddings_mean.std().item()
+                over_05 = sum(abs(embeddings_mean) >= 0.5).item()
+                over_10 = sum(abs(embeddings_mean) >= 1).item()
                 
                 embeddings_std = embeddings.std(dim=0)
                 embeddings_std_total = embeddings_std.mean().item()
                 
-                arr_cos = cosine_similarity(embeddings)
-                arr_cos_mean = np.ma.masked_where(arr_cos == 0, arr_cos).mean()
-                
-                embeddings = embeddings.double()
-                uniformity = uniform_loss(embeddings).item()
+                # # embeddings = embeddings.double()
+                # uniformity = uniform_loss(embeddings).item()
+                uniformity = 0
                 
                 norm_mean = embeddings.norm(dim=-1).mean().item()
                 norm_std = embeddings.norm(dim=-1).std().item()
                 
-                pdist = torch.pdist(embeddings, p=2).mean().item()
-                pdist_norm = pdist / norm_mean
+                # pdist = torch.pdist(embeddings, p=2).mean().item()
+                # pdist_norm = pdist / norm_mean
+                pdist = 0
+                pdist_norm = 0
                 
-                df.loc[:, (encoder, plm, size)] = [embeddings_mean_total, embeddings_std_total, over_2, over_4, over_6, np.nan, arr_cos_mean, uniformity, pdist, pdist_norm, norm_mean, norm_std]
+                list_index = [random.choices(range(NUM_DATA), k=2) for i in range(NUM_DATA)]
+                sampled_pair = torch.stack([embeddings[[i, j]] for i, j in list_index])
+                arr_cos = np.array([cosine_similarity(x[0:1], x[1:2])[0][0] for x in tqdm(sampled_pair, leave=False)])
+                # arr_cos_mean = np.ma.masked_where(arr_cos == 0, arr_cos).mean()
+                arr_cos_mean = arr_cos.mean()
+                
+                df.loc[:, (encoder, plm, size)] = [embeddings_mean_total, embeddings_mean_std, embeddings_std_total, over_05, over_10, np.nan, arr_cos_mean, uniformity, pdist, pdist_norm, norm_mean, norm_std]
             except KeyError as e:
                 print(e)
                 pass
