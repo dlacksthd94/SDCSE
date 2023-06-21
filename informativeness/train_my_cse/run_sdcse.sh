@@ -46,24 +46,24 @@ RESULT_ROOT_FOLDER='.'
 # In this example, we show how to train SimCSE using multiple GPU cards and PyTorch's distributed data parallel on supervised NLI dataset.
 # Set how many GPUs to use
 
-NUM_GPU=1
+NUM_GPU=4
 
-for PLM in roberta_base; do
-    for BATCH_SIZE in 128; do
+for PLM in bert_base; do
+    for BATCH_SIZE in 64; do
         for LR in ${dict_lr[${PLM}]}; do
             for EPOCH in 1; do
                 for SEED in 0 1 2 3 4; do
                     for MAX_LEN in 32; do
-                        for LAMBDA in 1e-1; do
+                        for LAMBDA in 5e-1; do
                             for PERTURB_TYPE in dropout; do
                                 for PERTURB_NUM in 1; do
-                                    for PERTURB_STEP in 1 2; do
+                                    for PERTURB_STEP in 2; do
                                         for LOSS in margin; do
                                             for POOLER in wp; do
                                                 for METRIC in stsb; do
                                                     for SIM in 0; do
-                                                        for MARGIN in 1e-0 1e-1; do
-                                                            CUDA_VISIBLE_DEVICES=2 \
+                                                        for MARGIN in 1e-1; do
+                                                            CUDA_VISIBLE_DEVICES=0,1,2,3 \
                                                             taskset -c 120-127 \
                                                             python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
                                                                 --model_name_or_path ${dict_plm[${PLM}]} \

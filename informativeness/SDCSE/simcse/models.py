@@ -188,7 +188,9 @@ class CustomDropout(nn.Module):
         out = x.clone()
         for i in range(len(self.dict_dropout)):
             dropout_i = getattr(self, f'dropout_{i}')
-            out[i::len(self.dict_dropout), 1:, :] = dropout_i(x[i::len(self.dict_dropout), 1:, :])
+            # out[i::len(self.dict_dropout), :, :] = dropout_i(x[i::len(self.dict_dropout), :, :])
+            # p = dropout_i.p #if i else 0
+            out[i::len(self.dict_dropout), 1:, :] = dropout_i(x[i::len(self.dict_dropout), 1:, :]) #* (1-p) / 0.9
         out[:, 0, :] = self.dropout(out[:, 0, :])
         return out
 

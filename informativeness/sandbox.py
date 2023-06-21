@@ -131,3 +131,14 @@ sum(arr_seq_len < 32)
 sum(arr_seq_len < 64)
 sum(arr_seq_len < 128)
 # tokenizer(list_text, return_tensors='pt', padding=True, truncation=True, max_length=32)
+
+""" """ """ """ """ cov exp """ """ """ """ """
+import numpy as np
+from itertools import permutations
+# l = np.array(list(permutations([1,2,3], 2)))
+# l = np.array([[1,3], [1,1], [3,3], [3,1]])
+pool = range(1, 4)
+l = np.array([[i, j] for i in pool for j in pool])
+l[0] = [0,0]
+l[-1] = [3,3]
+np.cov(l.T)

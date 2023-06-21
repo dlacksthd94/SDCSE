@@ -308,18 +308,18 @@ class OurTrainingArguments(TrainingArguments):
 #     'roberta_base': 'roberta-base',
 #     'roberta_large': 'roberta-large',
 # }
-# PLM='roberta_base'
+# PLM='bert_base'
 # BATCH_SIZE=128
 # LR='3e-5'
 # EPOCH=1
 # SEED=0
 # MAX_LEN=32
 # LAMBDA='1e-0'
-# PERTURB_TYPE='dropout'
+# PERTURB_TYPE='mask_token'
 # PERTURB_NUM=1
-# PERTURB_STEP=1
+# PERTURB_STEP=2
 # NUM_INFO_PAIR=0
-# MARGIN='0e-0'
+# MARGIN='1e-1'
 # sys.argv = [
 #     'train.py',
 #     '--model_name_or_path', dict_plm[PLM],
@@ -727,9 +727,11 @@ class OurDataCollatorWithPadding:
             perturbation_token_id = self.tokenizer.pad_token_id
         else:
             raise NotImplementedError
+
+        size_sentence_pair = (data_args.perturbation_num + 1) * 2 if data_args.num_informative_pair else 2
         
         special_tokens_mask = [
-            self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in inputs[::(data_args.perturbation_num + 1) * 2].tolist()
+            self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in inputs[::size_sentence_pair].tolist()
         ]
         special_tokens_mask = (~torch.tensor(special_tokens_mask, dtype=torch.bool)).float()
         total_perturbation_num = data_args.perturbation_num * data_args.perturbation_step
@@ -738,18 +740,24 @@ class OurDataCollatorWithPadding:
         list_randint = torch.multinomial(special_tokens_mask, total_perturbation_num, replacement=False)
         
         if data_args.num_informative_pair == 2:
-            size_sentence_pair = (data_args.perturbation_num + 1) * 2
             for i in range(data_args.perturbation_num):
                 for j in range((i + 1) * data_args.perturbation_step):
                     target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
                     inputs[(i + 1) * 2::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
                     inputs[(i + 1) * 2 + 1::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
         elif data_args.num_informative_pair == 1:
-            size_sentence_pair = data_args.perturbation_num + 2
             for i in range(data_args.perturbation_num):
                 for j in range((i + 1) * data_args.perturbation_step):
                     target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
                     inputs[i + 2::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+        elif data_args.num_informative_pair == 0:
+            # for j in range(data_args.perturbation_step):
+            #     target_index = (range(list_randint[:, j].shape[0]), list_randint[:, j])
+            #     inputs[1::size_sentence_pair][target_index] = (torch.Tensor([perturbation_token_id] * target_index[1].shape[0]) * special_tokens_mask[target_index]).long()
+            probability_matrix = torch.full(inputs[1::2].shape, 0.1 * data_args.perturbation_step)
+            probability_matrix.masked_fill_(~special_tokens_mask.bool(), value=0.0)
+            masked_indices = torch.bernoulli(probability_matrix).bool()
+            inputs[1::2][masked_indices] = perturbation_token_id
         else:
             raise NotImplementedError
         return

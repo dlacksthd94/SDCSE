@@ -94,33 +94,34 @@ list_encoder="SimCSE DiffCSE PromCSE MCSE SNCSE SDCSE"
 #     done
 #     cd ..
 
-TASK_SET='sts' # sts / transfer / full
+TASK_SET='full' # sts / transfer / full
 MODE='test' # test / dev / fasttest (applied only on transfer tasks)
 ENCODER='SDCSE'
-RESULT_ROOT_FOLDER=${ENCODER}/result
-# RESULT_ROOT_FOLDER='/data/chansonglim'
+# RESULT_ROOT_FOLDER=${ENCODER}/result
+RESULT_ROOT_FOLDER='/data1/chansonglim'
 # RESULT_FOLDER='backup_eval_token_sim1'
 # RESULT_FOLDER='backup_eval_dropout_sim1_nocls'
 RESULT_FOLDER='backup_eval_dropout_sim0_nocls'
-GPU_ID=2
+# RESULT_FOLDER='backup_eval_dropout_sim0_all'
+GPU_ID=3
 
 for training_method in unsup; do
-    for plm in roberta_base; do
+    for plm in bert_base; do
         for batch_size in 128; do
             for lr in ${dict_lr[${plm}]}; do
                 for epoch in 1; do
-                    for seed in 0 1 2 3 4; do
+                    for seed in 4; do
                         for max_len in 32; do
                             for lambda_weight in 1e-0; do
-                                for PERTURB_TYPE in dropout; do
+                                for PERTURB_TYPE in mask_token; do
                                     for PERTURB_NUM in 1; do
-                                        for PERTURB_STEP in 1 2 3; do
+                                        for PERTURB_STEP in 1; do
                                             for LOSS in margin; do
                                                 for POOLER in wp; do
                                                     for METRIC in stsb; do
-                                                        for MARGIN in 1e-0 1e-1; do
-                                                            file_name=${MODE}_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN}.txt
+                                                        for MARGIN in 1e-1; do
                                                             save_folder="result/evaluation/${dict_encoder[${ENCODER}]}/${RESULT_FOLDER}"
+                                                            file_name=${MODE}_${TASK_SET}_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${batch_size}_${lr}_${epoch}_${seed}_${max_len}_${lambda_weight}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN}.txt
                                                             if [ ! -d ${save_folder} ]; then
                                                                 mkdir ${save_folder}
                                                             fi
