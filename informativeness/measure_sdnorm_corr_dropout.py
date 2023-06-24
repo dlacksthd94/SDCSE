@@ -16,7 +16,9 @@ with open(PATH_DATA, 'r') as f:
 list_text = np.random.choice(list_text, size=100000, replace=False)
 len(list_text)
 
-with open('model_meta_data.json', 'r') as f:
+# FILE_NAME = 'model_meta_data_open.json'
+FILE_NAME = 'model_meta_data_my.json'
+with open(FILE_NAME, 'r') as f:
     dict_model = json.load(f)
     list_encoder_to_remove = ['diffcse', 'promcse', 'scd']
     # list_encoder_to_remove = ['promcse', 'scd']
@@ -24,20 +26,20 @@ with open('model_meta_data.json', 'r') as f:
         dict_model.pop(encoder) 
 
 INIT_DROPOUT = 0
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 DEVICE = 'cuda'
 MAX_LEN = 32
-SENTENCE_PAIR_SIZE = 10
+SENTENCE_PAIR_SIZE = 6
 assert SENTENCE_PAIR_SIZE <= 10
 os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
 list_perturb_num = range(1, 2)
-list_perturb_step = np.arange(0.1, 1, 0.1).round(2)
+list_perturb_step = np.arange(0.1, round(0.1 * SENTENCE_PAIR_SIZE, 1), 0.1).round(2)
 list_product = list(product(list_perturb_num, list_perturb_step))
 # list_init_dropout = [0, 0.1]
 list_init_dropout = [0]
 
-columns = pd.MultiIndex.from_product([dict_model.keys(), dict_model['bert'].keys(), dict_model['bert']['bert'].keys(), list_init_dropout], names=['encoder', 'plm', 'size', 'init_dropout'])
+columns = pd.MultiIndex.from_product([dict_model.keys(), list(dict_model.values())[0].keys(), list(list(dict_model.values())[0].values())[0].keys(), list_init_dropout], names=['encoder', 'plm', 'size', 'init_dropout'])
 index = pd.MultiIndex.from_tuples(list_product, names=['perturb_num', 'perturb_dropout'])
 df = pd.DataFrame(index=index, columns=columns)
 # encoder, plm, size, perturb_num = 'simcse', 'roberta', 'large', 1
@@ -129,4 +131,4 @@ for encoder in tqdm(dict_model):
                 list_corr_mean = np.array(list_corr).mean(axis=2)
                 df.loc[perturb_num, (encoder, plm, size)] = list_corr_mean
 df = df.round(2)
-df.to_csv('../sdnorm_dropout.csv')
+df.to_csv(f"../sdnorm_dropout_{FILE_NAME.split('.')[0].split('_')[-1]}.csv")

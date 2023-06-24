@@ -36,8 +36,8 @@ def result_dev(*groupby):
                     for max_len in [32]:
                         list_lambda_w = ['0e-0', '2e-0', '5e-1'] + [f'1e-{i}' for i in range(0, 2)]
                         for lambda_w in list_lambda_w:
-                            # for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
-                            for pt_type in ['mask_token', 'dropout', 'none']:
+                            for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
+                            # for pt_type in ['mask_token', 'dropout', 'none']:
                                 # for pt_num in [0, 1, 2, 3]:
                                 for pt_num in [0, 1]:
                                     for pt_step in [0, 1, 2, 3, 4, 5]:
@@ -55,7 +55,7 @@ def result_dev(*groupby):
                                                                     root_path_another = os.path.join(os.path.expanduser('~'), 'PAPER/SDCSE/informativeness/', ENCODER, 'result')
                                                                     result_path = os.path.join(root_path_another, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}', 'eval_results.txt')
                                                                 if not os.path.exists(result_path):
-                                                                    root_path_another = os.path.join('/data1/chansonglim/', RESULT_FOLDER)
+                                                                    root_path_another = os.path.join('/data1/csl/', RESULT_FOLDER)
                                                                     result_path = os.path.join(root_path_another, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}', 'eval_results.txt')
                                                                 # if not os.path.exists(result_path):
                                                                 #     result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}', 'eval_results.txt')
@@ -93,8 +93,8 @@ def result_eval(*groupby):
                             for max_len in [32]:
                                 list_lambda_w = ['0e-0', '2e-0', '5e-1'] + [f'1e-{i}' for i in range(0, 2)]
                                 for lambda_w in list_lambda_w:
-                                    # for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
-                                    for pt_type in ['mask_token', 'dropout', 'none']:
+                                    for pt_type in ['mask_token', 'unk_token', 'pad_token', 'dropout', 'none']:
+                                    # for pt_type in ['mask_token', 'dropout', 'none']:
                                         for pt_num in [0, 1]:
                                             for pt_step in [0, 1, 2, 3, 4, 5]:
                                                 for seed in range(0, 5):
@@ -169,7 +169,7 @@ RESULT_FOLDER = 'backup_eval_dropout_sim0_nocls'
 # RESULT_FOLDER = 'backup_eval_dropout_sim0_all'
 
 result_dev('plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1]
-result_eval('mode', 'taskset', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1].loc[:, ['sts', 'transfer']]
+result_eval('mode', 'taskset', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1].loc[:, ['sts', 'transfer']].round(1)
 
 
 x = result_eval('mode', 'taskset', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1].loc[:, list_sts + ['sts']]
@@ -179,6 +179,10 @@ for col in list_sts + ['sts']:
     x.loc[:, (col, 'mean')] = r'{' + x.loc[:, (col, 'mean')] + r'}$_{\pm' + x.loc[:, (col, 'std')] + '}$ &'
 x[pd.MultiIndex.from_product([list_sts + ['sts'], ['mean']])]
 
-y = result_eval('mode', 'taskset', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1].loc[:, list_transfer + ['transfer']]
-y[pd.MultiIndex.from_product([list_transfer + ['transfer'], ['std']])] = y[pd.MultiIndex.from_product([list_transfer + ['transfer'], ['std']])] * 1.96 / np.sqrt(5)
-y = y.round(2)
+
+x = result_eval('mode', 'taskset', 'plm', 'bs', 'loss', 'lambda_w', 'pt_type', 'pooler', 'pt_num', 'pt_step', 'margin')[1].loc[:, list_transfer + ['transfer']]
+x[pd.MultiIndex.from_product([list_transfer + ['transfer'], ['std']])] = x[pd.MultiIndex.from_product([list_transfer + ['transfer'], ['std']])] * 1.96 / np.sqrt(5)
+x = x.round(2).apply(lambda x: [format(xi, ".1f") for xi in x])
+for col in list_transfer + ['transfer']:
+    x.loc[:, (col, 'mean')] = r'{' + x.loc[:, (col, 'mean')] + r'}$_{\pm' + x.loc[:, (col, 'std')] + '}$ &'
+x[pd.MultiIndex.from_product([list_transfer + ['transfer'], ['mean']])]

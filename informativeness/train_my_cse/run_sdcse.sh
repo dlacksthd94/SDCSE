@@ -40,8 +40,17 @@ declare -A dict_lr=(
     ["roberta_large"]=3e-5
 )
 
+declare -A dict_data=(
+    ["constituency_parsing"]='../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json'
+    ["none"]='data/wiki1m_for_simcse.txt'
+    ["dropout"]='data/wiki1m_for_simcse.txt'
+    ["mask_token"]='data/wiki1m_for_simcse.txt'
+    ["unk_token"]='data/wiki1m_for_simcse.txt'
+    ["pad_token"]='data/wiki1m_for_simcse.txt'
+)
+
 RESULT_ROOT_FOLDER='.'
-# RESULT_ROOT_FOLDER='/data1/chansonglim'
+# RESULT_ROOT_FOLDER='/data1/csl'
 
 # In this example, we show how to train SimCSE using multiple GPU cards and PyTorch's distributed data parallel on supervised NLI dataset.
 # Set how many GPUs to use
@@ -49,12 +58,12 @@ RESULT_ROOT_FOLDER='.'
 NUM_GPU=4
 
 for PLM in bert_base; do
-    for BATCH_SIZE in 64; do
+    for BATCH_SIZE in 128; do
         for LR in ${dict_lr[${PLM}]}; do
             for EPOCH in 1; do
-                for SEED in 0 1 2 3 4; do
+                for SEED in 1 2; do
                     for MAX_LEN in 32; do
-                        for LAMBDA in 5e-1; do
+                        for LAMBDA in 1e-0; do
                             for PERTURB_TYPE in dropout; do
                                 for PERTURB_NUM in 1; do
                                     for PERTURB_STEP in 2; do
@@ -67,7 +76,7 @@ for PLM in bert_base; do
                                                             taskset -c 120-127 \
                                                             python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
                                                                 --model_name_or_path ${dict_plm[${PLM}]} \
-                                                                --train_file data/wiki1m_for_simcse.txt \
+                                                                --train_file ${dict_data[${PERTURB_TYPE}]} \
                                                                 --output_dir ${RESULT_ROOT_FOLDER}/result/my-unsup-sdcse-${dict_plm[${PLM}]}_${BATCH_SIZE}_${LR}_${EPOCH}_${SEED}_${MAX_LEN}_${LAMBDA}_${PERTURB_TYPE}_${PERTURB_NUM}_${PERTURB_STEP}_${LOSS}_${POOLER}_${METRIC}_${MARGIN} \
                                                                 --num_train_epochs ${EPOCH} \
                                                                 --per_device_train_batch_size ${BATCH_SIZE} \

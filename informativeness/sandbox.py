@@ -142,3 +142,77 @@ l = np.array([[i, j] for i in pool for j in pool])
 l[0] = [0,0]
 l[-1] = [3,3]
 np.cov(l.T)
+
+
+""" """ """ """ """ calculating hypersphere volume """ """ """ """ """
+import math
+from scipy.special import gamma
+
+def hypersphere_volume(r, n):
+    volume = math.pi**(n / 2) / (gamma(n / 2 + 1)) * r**n
+    return volume
+
+r = 9.9  # 반지름
+n = 10  # 차원
+
+hypersphere_volume(r, n)
+
+""" """ """ """ """ calculating hypersphere surface area """ """ """ """ """
+import math
+
+def hypersphere_surface_area(r, n):
+    surface_area = (2 * math.pi**(n / 2)) / gamma(n / 2) * r**(n - 1)
+    return surface_area
+
+r = 4.5  # 반지름
+n = 400  # 차원
+
+hypersphere_surface_area(r, n)
+
+""" """ """ """ """ exploring hypersphere area and volumne """ """ """ """ """
+def volume_area(r, N):
+    print(*['n', 'v_n', 's_n-1', 'v_n+1', 's_n', 'v_n+2', 's_n+1'], sep='\t')
+    for n in range(N):
+        v_n = hypersphere_volume(r, n)
+        v_n1 = hypersphere_volume(r, n + 1)
+        v_n2 = v_n * 2 * math.pi / (n + 2) * r**2
+        s_n_1 = hypersphere_surface_area(r, n)
+        s_n = hypersphere_surface_area(r, n + 1)
+        s_n1 = s_n_1 * 2 * math.pi / n * r**2
+        # s_n = 2 * math.pi * v_n_1
+        result = np.array([n, v_n, s_n_1, v_n1, s_n, v_n2, s_n1]).round(2)
+        print(*result, sep='\t')
+
+def volume_area_recurrent(r, N):
+    print(*['n', 'v_n', 's_n', 'v_n_r', 's_n_r'], sep='\t')
+    v1 = hypersphere_volume(r, 1)
+    v2 = hypersphere_volume(r, 2)
+    s0 = hypersphere_surface_area(r, 1)
+    s1 = hypersphere_surface_area(r, 2)
+    list_v = [v1, v2]
+    list_s = [s0, s1]
+    print(1, round(v1, 2), round(s0, 2), sep='\t')
+    print(2, round(v2, 2), round(s1, 2), sep='\t')
+    for n in range(3, N):
+        # v_n = hypersphere_volume(r, n)
+        # s_n_1 = hypersphere_surface_area(r, n)
+        v_n = 0
+        s_n_1 = 0
+        v_n_r = list_v[n - 3] * 2 * math.pi / (n) * r**2
+        s_n_1_r = list_s[n - 3] * 2 * math.pi / (n - 2) * r**2
+        list_v.append(v_n_r)
+        list_s.append(s_n_1_r)
+        result = np.array([n, v_n, s_n_1, list_v[n - 1], list_s[n - 1]]).round(2)
+        print(*result, sep='\t')
+    return list_v, list_s
+
+r, N=14.4, 768
+# volume_area(r, N)
+list_v, list_s = volume_area_recurrent(r, N)
+volume_area_recurrent(14.5, 768)[1][-1] / volume_area_recurrent(14.4, 768)[1][-1]
+(14.5 / 14.4)**767
+volume_area_recurrent(14.5, 768)[0][-1] / volume_area_recurrent(14.4, 768)[0][-1]
+(volume_area_recurrent(14.5, 768)[0][-1] - volume_area_recurrent(14.4, 768)[0][-1]) / (volume_area_recurrent(14.4, 768)[0][-1] - volume_area_recurrent(14.3, 768)[0][-1])
+
+volume_area_recurrent(2, 10)[1][-1] / volume_area_recurrent(1.5, 10)[1][-1]
+volume_area_recurrent(2, 10)[0][-1] / volume_area_recurrent(1.5, 10)[0][-1]

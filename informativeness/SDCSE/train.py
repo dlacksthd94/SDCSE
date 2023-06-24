@@ -315,17 +315,17 @@ class OurTrainingArguments(TrainingArguments):
 # SEED=0
 # MAX_LEN=32
 # LAMBDA='1e-0'
-# PERTURB_TYPE='mask_token'
+# PERTURB_TYPE='constituency_parsing'
 # PERTURB_NUM=1
-# PERTURB_STEP=2
+# PERTURB_STEP=1
 # NUM_INFO_PAIR=0
 # MARGIN='1e-1'
 # sys.argv = [
 #     'train.py',
 #     '--model_name_or_path', dict_plm[PLM],
 #     # '--model_name_or_path', f'result/my-unsup-simcse-{dict_plm[PLM]}_256_1e-4_1_0_32',
-#     '--train_file', 'data/wiki1m_for_simcse.txt',
-#     # '--train_file', '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
+#     # '--train_file', 'data/wiki1m_for_simcse.txt',
+#     '--train_file', '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
 #     '--output_dir', f'result/my-unsup-sdcse-{dict_plm[PLM]}_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
 #     '--num_train_epochs', str(EPOCH),
 #     '--per_device_train_batch_size', str(BATCH_SIZE),
@@ -560,7 +560,21 @@ elif len(column_names) == 1:
 else:
     raise NotImplementedError
 
-examples = datasets['train'][0:5]
+if data_args.perturbation_type == 'constituency_parsing' and data_args.num_informative_pair == 0:
+    # datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/")
+    import pyarrow
+    import pandas as pd
+    from datasets.arrow_dataset import Dataset
+    df = datasets.data['train'].to_pandas()
+    df_groupby = df.groupby('group').agg(list)
+    num_pair = data_args.perturbation_num + 1
+    df_groupby['text'] = df_groupby['text'].apply(lambda x: x[:num_pair] if len(x) > 1 else x * num_pair)
+    df_groupby['rank'] = df_groupby['rank'].apply(lambda x: x[:num_pair] if len(x) > 1 else x * num_pair)
+    df_new = pd.DataFrame({'text': df_groupby.explode('text')['text'], 'group': df_groupby.explode('text')['text'].index, 'rank': df_groupby.explode('rank')['rank']})
+    df_new = df_new.reset_index(drop=True)
+    datasets['train'] = Dataset(pyarrow.lib.Table.from_pandas(df_new))
+
+examples = datasets['train'][0:10]
 
 def prepare_features(examples):
     # padding = longest (default)
@@ -580,12 +594,21 @@ def prepare_features(examples):
             examples[sent1_cname][idx] = " "
     
     if data_args.num_informative_pair == 2:
-        sentences = examples[sent0_cname] + examples[sent1_cname]
-        sentences *= data_args.perturbation_num + 1
+        if data_args.perturbation_type == 'constituency_parsing':
+            raise NotImplementedError
+        else:
+            sentences = examples[sent0_cname] + examples[sent1_cname]
+            sentences *= data_args.perturbation_num + 1
     elif data_args.num_informative_pair == 1:
-        sentences = examples[sent0_cname] + examples[sent1_cname] * (data_args.perturbation_num + 1)
+        if data_args.perturbation_type == 'constituency_parsing':
+            raise NotImplementedError
+        else:
+            sentences = examples[sent0_cname] + examples[sent1_cname] * (data_args.perturbation_num + 1)
     elif data_args.num_informative_pair == 0:
-        sentences = examples[sent0_cname] + examples[sent1_cname]
+        if data_args.perturbation_type == 'constituency_parsing':
+            sentences = examples[sent0_cname]
+        else:
+            sentences = examples[sent0_cname] + examples[sent1_cname]
     else:
         raise NotImplementedError
     
@@ -602,21 +625,39 @@ def prepare_features(examples):
         truncation=True,
         padding="max_length" if data_args.pad_to_max_length else False,
     )
-
-    features = {}
-    if sent2_cname is not None:
-        for key in sent_features:
-            features[key] = [[sent_features[key][i], sent_features[key][i+total], sent_features[key][i+total*2]] for i in range(total)]
-    else:
-        for key in sent_features:
-            # features[key] = [[sent_features[key][i], sent_features[key][i+total]] for i in range(total)]
-            features[key] = [[sent_features[key][i + total * j] for j in range(len(sent_features[key]) // total)] for i in range(total)]
     
-    if examples.get('group'):
-        features['group'] = [[[x]] * 2 for x in examples['group']]
-    if examples.get('rank'):
-        features['rank'] = [[[x]] * 2 for x in examples['rank']]
+    if data_args.perturbation_type == 'constituency_parsing':
+        features = {}
+        if sent2_cname is not None:
+            raise NotImplementedError
+        else:
+            for key in sent_features:
+                num_pair = data_args.perturbation_num + 1
+                features[key] = [sent_features[key][i:i + num_pair] for i in range(0, total, num_pair)]
+    else:
+        features = {}
+        if sent2_cname is not None:
+            for key in sent_features:
+                features[key] = [[sent_features[key][i], sent_features[key][i+total], sent_features[key][i+total*2]] for i in range(total)]
+        else:
+            for key in sent_features:
+                # features[key] = [[sent_features[key][i], sent_features[key][i+total]] for i in range(total)]
+                features[key] = [[sent_features[key][i + total * j] for j in range(len(sent_features[key]) // total)] for i in range(total)]
         
+    if data_args.perturbation_type == 'constituency_parsing':
+        if data_args.num_informative_pair == 0:
+            if examples.get('group'):
+                features['group'] = [[[examples['group'][i]], [examples['group'][i + 1]]] for i in range(0, len(examples['group']), 2)]
+            if examples.get('rank'):
+                features['rank'] = [[[examples['rank'][i]], [examples['rank'][i + 1]]] for i in range(0, len(examples['rank']), 2)]
+        elif data_args.num_informative_pair == 1:
+            raise NotImplementedError
+        elif data_args.num_informative_pair == 2:
+            if examples.get('group'):
+                features['group'] = [[[x]] * 2 for x in examples['group']]
+            if examples.get('rank'):
+                features['rank'] = [[[x]] * 2 for x in examples['rank']]
+    
     return features
     prepare_features(examples)
 
@@ -631,6 +672,7 @@ if training_args.do_train:
 next(iter(train_dataset))
 from torch.utils.data import Subset
 features = Subset(train_dataset, range(10))
+train_dataset[:10]
 
 # Data collator
 @dataclass
@@ -665,7 +707,7 @@ class OurDataCollatorWithPadding:
         if model_args.do_mlm:
             batch["mlm_input_ids"], batch["mlm_labels"] = self.mask_tokens(batch["input_ids"])
         
-        if data_args.perturbation_type not in [None, 'dropout']:
+        if data_args.perturbation_type not in [None, 'dropout', 'constituency_parsing']:
             # inputs=batch["input_ids"]
             self.perturbation(inputs=batch["input_ids"])
             # inputs[:10][:10]
