@@ -301,60 +301,67 @@ class OurTrainingArguments(TrainingArguments):
 
         return device
 
-# #######################
-# dict_plm = {
-#     'bert_base': 'bert-base-uncased',
-#     'bert_large': 'bert-large-uncased',
-#     'roberta_base': 'roberta-base',
-#     'roberta_large': 'roberta-large',
-# }
-# PLM='bert_base'
-# BATCH_SIZE=128
-# LR='3e-5'
-# EPOCH=1
-# SEED=0
-# MAX_LEN=32
-# LAMBDA='1e-0'
-# PERTURB_TYPE='constituency_parsing'
-# PERTURB_NUM=1
-# PERTURB_STEP=1
-# NUM_INFO_PAIR=0
-# MARGIN='1e-1'
-# sys.argv = [
-#     'train.py',
-#     '--model_name_or_path', dict_plm[PLM],
-#     # '--model_name_or_path', f'result/my-unsup-simcse-{dict_plm[PLM]}_256_1e-4_1_0_32',
-#     # '--train_file', 'data/wiki1m_for_simcse.txt',
-#     '--train_file', '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
-#     '--output_dir', f'result/my-unsup-sdcse-{dict_plm[PLM]}_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
-#     '--num_train_epochs', str(EPOCH),
-#     '--per_device_train_batch_size', str(BATCH_SIZE),
-#     '--learning_rate', LR,
-#     '--max_seq_length', str(MAX_LEN),
-#     '--evaluation_strategy', 'steps',
-#     '--metric_for_best_model', 'stsb_spearman',
-#     '--load_best_model_at_end',
-#     '--eval_steps', '125',
-#     '--pooler_type', 'cls',
-#     "--mlp_only_train",
-#     '--overwrite_output_dir',
-#     '--temp', '0.05',
-#     '--do_train',
-#     '--do_eval',
-#     # '--eval_transfer',
-#     '--fp16',
-#     '--seed', str(SEED),
-#     # '--no_cuda',
-#     '--no_remove_unused_columns',
-#     '--lambda_weight', str(LAMBDA),
-#     '--perturbation_type', str(PERTURB_TYPE),
-#     '--perturbation_num', str(PERTURB_NUM),
-#     '--perturbation_step', str(PERTURB_STEP), 
-#     '--num_informative_pair', str(NUM_INFO_PAIR),
-#     '--margin', str(MARGIN),
-# ]
-# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-# #######################
+#######################
+dict_plm = {
+    'bert_base': 'bert-base-uncased',
+    'bert_large': 'bert-large-uncased',
+    'roberta_base': 'roberta-base',
+    'roberta_large': 'roberta-large',
+}
+dict_data ={
+    'constituency_parsing': '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
+    'none': 'data/wiki1m_for_simcse.txt',
+    'dropout': 'data/wiki1m_for_simcse.txt',
+    'mask_token': 'data/wiki1m_for_simcse.txt',
+    'unk_token': 'data/wiki1m_for_simcse.txt',
+    'pad_token': 'data/wiki1m_for_simcse.txt',
+}
+PLM='bert_base'
+BATCH_SIZE=128
+LR='3e-5'
+EPOCH=1
+SEED=0
+MAX_LEN=32
+LAMBDA='1e-0'
+PERTURB_TYPE='constituency_parsing'
+PERTURB_NUM=1
+PERTURB_STEP=2
+NUM_INFO_PAIR=0
+MARGIN='1e-1'
+sys.argv = [
+    'train.py',
+    '--model_name_or_path', dict_plm[PLM],
+    # '--model_name_or_path', f'result/my-unsup-simcse-{dict_plm[PLM]}_256_1e-4_1_0_32',
+    '--train_file', dict_data[PERTURB_TYPE],
+    '--output_dir', f'result/my-unsup-sdcse-{dict_plm[PLM]}_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
+    '--num_train_epochs', str(EPOCH),
+    '--per_device_train_batch_size', str(BATCH_SIZE),
+    '--learning_rate', LR,
+    '--max_seq_length', str(MAX_LEN),
+    '--evaluation_strategy', 'steps',
+    '--metric_for_best_model', 'stsb_spearman',
+    '--load_best_model_at_end',
+    '--eval_steps', '125',
+    '--pooler_type', 'cls',
+    "--mlp_only_train",
+    '--overwrite_output_dir',
+    '--temp', '0.05',
+    '--do_train',
+    '--do_eval',
+    # '--eval_transfer',
+    '--fp16',
+    '--seed', str(SEED),
+    # '--no_cuda',
+    '--no_remove_unused_columns',
+    '--lambda_weight', str(LAMBDA),
+    '--perturbation_type', str(PERTURB_TYPE),
+    '--perturbation_num', str(PERTURB_NUM),
+    '--perturbation_step', str(PERTURB_STEP), 
+    '--num_informative_pair', str(NUM_INFO_PAIR),
+    '--margin', str(MARGIN),
+]
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+#######################
 
 # def main():
 # See all possible arguments in src/transformers/training_args.py
@@ -421,6 +428,8 @@ if extension == "csv":
     datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/", delimiter="\t" if "tsv" in data_args.train_file else ",")
 else:
     datasets = load_dataset(extension, data_files=data_files, cache_dir="./data/")
+# datasets['train'].data[362864:362865]
+datasets['train'] = datasets['train'].select(range(datasets['train'].num_rows - (datasets['train'].num_rows % (training_args.per_device_train_batch_size * torch.cuda.device_count()) % torch.cuda.device_count())))
 
 # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
 # https://huggingface.co/docs/datasets/loading_datasets.html.
@@ -567,9 +576,11 @@ if data_args.perturbation_type == 'constituency_parsing' and data_args.num_infor
     from datasets.arrow_dataset import Dataset
     df = datasets.data['train'].to_pandas()
     df_groupby = df.groupby('group').agg(list)
-    num_pair = data_args.perturbation_num + 1
-    df_groupby['text'] = df_groupby['text'].apply(lambda x: x[:num_pair] if len(x) > 1 else x * num_pair)
-    df_groupby['rank'] = df_groupby['rank'].apply(lambda x: x[:num_pair] if len(x) > 1 else x * num_pair)
+    idx_to_select = range(0, data_args.perturbation_num * data_args.perturbation_step + 1, data_args.perturbation_step)
+    func_select_idx = lambda x: [y for i, y in enumerate(x) if i in idx_to_select] if len(x) > data_args.perturbation_num * data_args.perturbation_step else pd.NA
+    df_groupby['text'] = df_groupby['text'].apply(func_select_idx)
+    df_groupby['rank'] = df_groupby['rank'].apply(func_select_idx)
+    df_groupby = df_groupby.dropna()
     df_new = pd.DataFrame({'text': df_groupby.explode('text')['text'], 'group': df_groupby.explode('text')['text'].index, 'rank': df_groupby.explode('rank')['rank']})
     df_new = df_new.reset_index(drop=True)
     datasets['train'] = Dataset(pyarrow.lib.Table.from_pandas(df_new))

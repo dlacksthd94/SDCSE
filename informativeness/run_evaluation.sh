@@ -39,83 +39,29 @@ declare -A dict_lr=(
 
 list_encoder="SimCSE DiffCSE PromCSE MCSE SNCSE SDCSE"
 
-# for encoder in ${list_encoder}; do
-#     cd ${ENCODER}
-#     for training_method in unsup; do
-#         for plm in bert; do
-#             for pooler_method in wp wop; do
-#                 file_name=result_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${pooler_method}.txt
-#                 echo ${training_method} ${ENCODER} ${plm} ${pooler_method}
-#                 if [ ${ENCODER} = PromCSE ]; then
-#                     python evaluation.py \
-#                         --model_name_or_path ${dict_encoder_modelpath[${ENCODER}]} \
-#                         --pooler ${dict_pooler_method[${pooler_method}]} \
-#                         --task_set ${TASK_SET} \
-#                         --pre_seq_len 16 \
-#                         --mode ${MODE} > "../result/${file_name}"
-#                 else
-#                     python evaluation.py \
-#                         --model_name_or_path ${dict_encoder_modelpath[${ENCODER}]} \
-#                         --pooler ${dict_pooler_method[${pooler_method}]} \
-#                         --task_set ${TASK_SET} \
-#                         --mode ${MODE} > "../result/${file_name}"
-#                 fi
-#                 echo
-#             done
-#         done
-#     done
-#     cd ..
-# done
-
-# encoder=MCSE
-# cd ${ENCODER}
-#     for training_method in unsup; do
-#         for plm in bert; do
-#             for pooler_method in wp wop; do
-#                 file_name=result_${training_method}_${dict_encoder[${ENCODER}]}_${plm}_${pooler_method}.txt
-#                 echo ${training_method} ${ENCODER} ${plm} ${pooler_method}
-#                 if [ ${ENCODER} = PromCSE ]; then
-#                     python evaluation.py \
-#                         --model_name_or_path ${dict_encoder_modelpath[${ENCODER}]} \
-#                         --pooler ${dict_pooler_method[${pooler_method}]} \
-#                         --task_set full \
-#                         --pre_seq_len 16 \
-#                         --mode ${MODE} > "../result/${file_name}"
-#                 else
-#                     python evaluation.py \
-#                         --model_name_or_path ${dict_encoder_modelpath[${ENCODER}]} \
-#                         --pooler ${dict_pooler_method[${pooler_method}]} \
-#                         --task_set full \
-#                         --mode ${MODE} > "../result/${file_name}"
-#                 fi
-#                 echo
-#             done
-#         done
-#     done
-#     cd ..
-
 TASK_SET='full' # sts / transfer / full
 MODE='test' # test / dev / fasttest (applied only on transfer tasks)
 ENCODER='SDCSE'
-RESULT_ROOT_FOLDER=${ENCODER}/result
-# RESULT_ROOT_FOLDER='/data1/csl'
+# ENCODER='DiffCSE'
+# RESULT_ROOT_FOLDER=${ENCODER}/result
+RESULT_ROOT_FOLDER='/data1/csl'
 # RESULT_FOLDER='backup_eval_token_sim1'
 # RESULT_FOLDER='backup_eval_dropout_sim1_nocls'
 RESULT_FOLDER='backup_eval_dropout_sim0_nocls'
 # RESULT_FOLDER='backup_eval_dropout_sim0_all'
-GPU_ID=2
+GPU_ID=3
 
 for training_method in unsup; do
     for plm in bert_base; do
         for batch_size in 128; do
             for lr in ${dict_lr[${plm}]}; do
                 for epoch in 1; do
-                    for seed in 0; do
+                    for seed in 3 4; do
                         for max_len in 32; do
                             for lambda_weight in 1e-0; do
-                                for PERTURB_TYPE in dropout; do
+                                for PERTURB_TYPE in constituency_parsing; do
                                     for PERTURB_NUM in 1; do
-                                        for PERTURB_STEP in 2; do
+                                        for PERTURB_STEP in 1; do
                                             for LOSS in margin; do
                                                 for POOLER in wp; do
                                                     for METRIC in stsb; do
