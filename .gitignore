@@ -16,7 +16,7 @@ SentEval/data/
 
 # encoders
 SimCSE
-DiffCSE
+# DiffCSE
 PromCSE
 MCSE
 InfoCSE
