@@ -56,15 +56,15 @@ dict_meta = {
         'list_bs': [128],
         'list_epoch': [2],
         'list_max_len': [32],
-        'list_lambda_w': ['0e-0'],
+        'list_lambda_w': ['0e-0', '1e-0', '1e-1'],
         'list_pt_type': ['dropout', 'none'],
-        'list_pt_num': [0],
-        'list_pt_step': [0],
+        'list_pt_num': [0, 1],
+        'list_pt_step': [0, 1, 2],
         'list_seed': range(0, 5),
-        'list_loss': ['mse'],
+        'list_loss': ['mse', 'margin'],
         'list_pooler': ['wp'],
         'list_metric': ['stsb'],
-        'list_margin': ['0e-0'],
+        'list_margin': ['0e-0', '1e-0', '1e-1'],
         'list_lambda_w2': ['5e-3'],
         'list_mask_ratio': ['3e-1'],
     }
@@ -96,7 +96,7 @@ def result_dev(*groupby):
                                                                     
                                                                     try:
                                                                         # plm, bs, lr, epoch, seed, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_w2, mask_ratio = 'bert_base', 128, '3e-5', 1, 0, 32, '1e-0', 'dropout', 1, 2, 'margin', 'wp', 'stsb', '1e-1', '0e-0', '0e-0' # SDCSE
-                                                                        # plm, bs, lr, epoch, seed, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_w2, mask_ratio = 'bert_base', 128, '7e-6', 2, 0, 32, '0e-0', 'none', 0, 0, 'mse', 'wp', 'stsb', '0e-0', '5e-3', '3e-1' # DiffCSE
+                                                                        # plm, bs, lr, epoch, seed, max_len, lambda_w, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_w2, mask_ratio = 'bert_base', 128, '7e-6', 2, 0, 32, '1e-0', 'dropout', 1, 1, 'margin', 'wp', 'stsb', '1e-0', '5e-3', '3e-1' # DiffCSE
                                                                         result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_w}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}_{lambda_w2}_{mask_ratio}', 'eval_results.txt')
                                                                         if not os.path.exists(result_path):
                                                                             root_path_another = os.path.join('/data1/csl/', RESULT_FOLDER)

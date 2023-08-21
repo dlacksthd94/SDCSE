@@ -294,7 +294,7 @@ def cl_forward(cls,
 
     # Gather all embeddings if using distributed training
     if dist.is_initialized() and cls.training:
-        # Gather hard negative
+        # # Gather hard negative
         # if num_sent >= 3:
         #     z3_list = [torch.zeros_like(z3) for _ in range(dist.get_world_size())]
         #     dist.all_gather(tensor_list=z3_list, tensor=z3.contiguous())

@@ -49,7 +49,7 @@ class ModelArguments:
 
     # Huggingface's original arguments
     model_name_or_path: Optional[str] = field(
-        default='bert-based-uncased',
+        default=None,
         metadata={
             "help": "The model checkpoint for weights initialization."
             "Don't set if you want to train a model from scratch."
@@ -125,17 +125,17 @@ class ModelArguments:
     
     # SDCSE's arguments
     lambda_weight: float = field(
-        default=0.1,
+        default=1,
         metadata={
             "help": "Weight for lambda, which is the coefficient of informativeness-norm loss."
         }
     )
     loss_type: str = field(
-        default='l1', 
+        default='margin', 
         metadata={"help": "The type of loss function."}
     )
     margin: float = field(
-        default=0.3, 
+        default=0.1, 
         metadata={"help": "The margin of margin loss. (only applied when margin loss is used)"}
     )
     
@@ -202,15 +202,15 @@ class DataTrainingArguments:
         metadata={"help": "The type of perturbation applied to informative pairs"}
     )
     perturbation_num: int = field(
-        default=2, 
+        default=1, 
         metadata={"help": "The number of perturbation applied to informative pairs"}
     )
     perturbation_step: int = field(
-        default=1, 
+        default=2, 
         metadata={"help": "The step of perturbations applied to informative pairs"}
     )
     num_informative_pair: int = field(
-        default=2, 
+        default=0, 
         metadata={
             "help": "The way to construct informative pairs. "
             "2: create two informative pairs, each of which is corresponded to each sentence example in a positive pair. "
@@ -326,6 +326,7 @@ LAMBDA='1e-0'
 PERTURB_TYPE='constituency_parsing'
 PERTURB_NUM=1
 PERTURB_STEP=2
+LOSS='margin'
 NUM_INFO_PAIR=0
 MARGIN='1e-1'
 sys.argv = [
@@ -357,6 +358,7 @@ sys.argv = [
     '--perturbation_type', str(PERTURB_TYPE),
     '--perturbation_num', str(PERTURB_NUM),
     '--perturbation_step', str(PERTURB_STEP), 
+    '--loss_type', str(LOSS),
     '--num_informative_pair', str(NUM_INFO_PAIR),
     '--margin', str(MARGIN),
 ]
@@ -535,6 +537,7 @@ if data_args.perturbation_type == 'dropout':
             plm.encoder.layer[n].attention.output.dropout = custom_dropout
             plm.encoder.layer[n].output.dropout = custom_dropout
     model
+
 # elif data_args.perturbation_type in ['mask_token', 'unk_token']:
 #     dict_token = {
 #         'mask_token': '[MASK]',

@@ -66,15 +66,15 @@ for PLM in bert_base; do
             for EPOCH in 2; do
                 for SEED in 0; do
                     for MAX_LEN in 32; do
-                        for LAMBDA in 0e-0; do
-                            for PERTURB_TYPE in none; do
-                                for PERTURB_NUM in 0; do
-                                    for PERTURB_STEP in 0; do
-                                        for LOSS in mse; do
+                        for LAMBDA in 1e-1; do
+                            for PERTURB_TYPE in dropout; do
+                                for PERTURB_NUM in 1; do
+                                    for PERTURB_STEP in 1 2; do
+                                        for LOSS in margin; do
                                             for POOLER in wp; do
                                                 for METRIC in stsb; do
                                                     for SIM in 0; do
-                                                        for MARGIN in 0e-0; do
+                                                        for MARGIN in 1e-0 1e-1; do
                                                             for LAMBDA2 in ${dict_lambda_w2[${PLM}]}; do
                                                                 for MASK_RATIO in ${dict_mask_ratio[${PLM}]}; do
                                                                     CUDA_VISIBLE_DEVICES=0,1,2,3 \
@@ -98,8 +98,15 @@ for PLM in bert_base; do
                                                                         --do_train \
                                                                         --do_eval \
                                                                         --batchnorm \
-                                                                        --lambda_weight ${LAMBDA2} \
+                                                                        --lambda_weight_2 ${LAMBDA2} \
                                                                         --masking_ratio ${MASK_RATIO} \
+                                                                        --lambda_weight ${LAMBDA} \
+                                                                        --perturbation_type ${PERTURB_TYPE} \
+                                                                        --perturbation_num ${PERTURB_NUM} \
+                                                                        --perturbation_step ${PERTURB_STEP} \
+                                                                        --loss_type ${LOSS} \
+                                                                        --num_informative_pair ${SIM} \
+                                                                        --margin ${MARGIN} \
                                                                         --fp16 \
                                                                         --seed ${SEED} \
                                                                         "$@"
