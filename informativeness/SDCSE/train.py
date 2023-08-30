@@ -143,7 +143,6 @@ class ModelArguments:
         if self.loss_type is not None:
             assert self.loss_type in ['l1', 'sl1', 'mse', 'margin']
 
-    
 
 @dataclass
 class DataTrainingArguments:
@@ -205,7 +204,7 @@ class DataTrainingArguments:
         default=1, 
         metadata={"help": "The number of perturbation applied to informative pairs"}
     )
-    perturbation_step: int = field(
+    perturbation_step: float = field(
         default=2, 
         metadata={"help": "The step of perturbations applied to informative pairs"}
     )
@@ -238,8 +237,11 @@ class DataTrainingArguments:
                         assert self.perturbation_num == 1
             
         if self.perturbation_num > 0 or self.perturbation_step > 0:
-            assert self.perturbation_num * self.perturbation_step <= self.max_seq_length - 2
-
+            if self.perturbation_type in ['unk_token', 'mask_token', 'pad_token']:
+                assert isinstance(self.perturbation_step, int), "When using augmentation with [UNK], [MASK], [PAD] token, 'perturbation_step' should be an integer type."
+                assert self.perturbation_num * self.perturbation_step < self.max_seq_length - 2
+            elif self.perturbation_type == 'dropout':
+                assert 0.1 * self.perturbation_num * self.perturbation_step < 1
 
 
 @dataclass
@@ -301,69 +303,69 @@ class OurTrainingArguments(TrainingArguments):
 
         return device
 
-#######################
-dict_plm = {
-    'bert_base': 'bert-base-uncased',
-    'bert_large': 'bert-large-uncased',
-    'roberta_base': 'roberta-base',
-    'roberta_large': 'roberta-large',
-}
-dict_data ={
-    'constituency_parsing': '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
-    'none': 'data/wiki1m_for_simcse.txt',
-    'dropout': 'data/wiki1m_for_simcse.txt',
-    'mask_token': 'data/wiki1m_for_simcse.txt',
-    'unk_token': 'data/wiki1m_for_simcse.txt',
-    'pad_token': 'data/wiki1m_for_simcse.txt',
-}
-PLM='bert_base'
-BATCH_SIZE=128
-LR='3e-5'
-EPOCH=1
-SEED=0
-MAX_LEN=32
-LAMBDA='1e-0'
-PERTURB_TYPE='constituency_parsing'
-PERTURB_NUM=1
-PERTURB_STEP=2
-LOSS='margin'
-NUM_INFO_PAIR=0
-MARGIN='1e-1'
-sys.argv = [
-    'train.py',
-    '--model_name_or_path', dict_plm[PLM],
-    # '--model_name_or_path', f'result/my-unsup-simcse-{dict_plm[PLM]}_256_1e-4_1_0_32',
-    '--train_file', dict_data[PERTURB_TYPE],
-    '--output_dir', f'result/my-unsup-sdcse-{dict_plm[PLM]}_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
-    '--num_train_epochs', str(EPOCH),
-    '--per_device_train_batch_size', str(BATCH_SIZE),
-    '--learning_rate', LR,
-    '--max_seq_length', str(MAX_LEN),
-    '--evaluation_strategy', 'steps',
-    '--metric_for_best_model', 'stsb_spearman',
-    '--load_best_model_at_end',
-    '--eval_steps', '125',
-    '--pooler_type', 'cls',
-    "--mlp_only_train",
-    '--overwrite_output_dir',
-    '--temp', '0.05',
-    '--do_train',
-    '--do_eval',
-    # '--eval_transfer',
-    '--fp16',
-    '--seed', str(SEED),
-    # '--no_cuda',
-    '--no_remove_unused_columns',
-    '--lambda_weight', str(LAMBDA),
-    '--perturbation_type', str(PERTURB_TYPE),
-    '--perturbation_num', str(PERTURB_NUM),
-    '--perturbation_step', str(PERTURB_STEP), 
-    '--loss_type', str(LOSS),
-    '--num_informative_pair', str(NUM_INFO_PAIR),
-    '--margin', str(MARGIN),
-]
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-#######################
+# #######################
+# dict_plm = {
+#     'bert_base': 'bert-base-uncased',
+#     'bert_large': 'bert-large-uncased',
+#     'roberta_base': 'roberta-base',
+#     'roberta_large': 'roberta-large',
+# }
+# dict_data ={
+#     'constituency_parsing': '../data/backup_1000000/wiki1m_tree_cst_lg_large_subsentence.json',
+#     'none': 'data/wiki1m_for_simcse.txt',
+#     'dropout': 'data/wiki1m_for_simcse.txt',
+#     'mask_token': 'data/wiki1m_for_simcse.txt',
+#     'unk_token': 'data/wiki1m_for_simcse.txt',
+#     'pad_token': 'data/wiki1m_for_simcse.txt',
+# }
+# PLM='bert_base'
+# BATCH_SIZE=128
+# LR='3e-5'
+# EPOCH=1
+# SEED=0
+# MAX_LEN=32
+# LAMBDA='1e-0'
+# PERTURB_TYPE='constituency_parsing'
+# PERTURB_NUM=1
+# PERTURB_STEP=2
+# LOSS='margin'
+# NUM_INFO_PAIR=0
+# MARGIN='1e-1'
+# sys.argv = [
+#     'train.py',
+#     '--model_name_or_path', dict_plm[PLM],
+#     # '--model_name_or_path', f'result/my-unsup-simcse-{dict_plm[PLM]}_256_1e-4_1_0_32',
+#     '--train_file', dict_data[PERTURB_TYPE],
+#     '--output_dir', f'result/my-unsup-sdcse-{dict_plm[PLM]}_{BATCH_SIZE}_{LR}_{EPOCH}_{SEED}_{MAX_LEN}_{LAMBDA}',
+#     '--num_train_epochs', str(EPOCH),
+#     '--per_device_train_batch_size', str(BATCH_SIZE),
+#     '--learning_rate', LR,
+#     '--max_seq_length', str(MAX_LEN),
+#     '--evaluation_strategy', 'steps',
+#     '--metric_for_best_model', 'stsb_spearman',
+#     '--load_best_model_at_end',
+#     '--eval_steps', '125',
+#     '--pooler_type', 'cls',
+#     "--mlp_only_train",
+#     '--overwrite_output_dir',
+#     '--temp', '0.05',
+#     '--do_train',
+#     '--do_eval',
+#     # '--eval_transfer',
+#     '--fp16',
+#     '--seed', str(SEED),
+#     # '--no_cuda',
+#     '--no_remove_unused_columns',
+#     '--lambda_weight', str(LAMBDA),
+#     '--perturbation_type', str(PERTURB_TYPE),
+#     '--perturbation_num', str(PERTURB_NUM),
+#     '--perturbation_step', str(PERTURB_STEP), 
+#     '--loss_type', str(LOSS),
+#     '--num_informative_pair', str(NUM_INFO_PAIR),
+#     '--margin', str(MARGIN),
+# ]
+# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+# #######################
 
 # def main():
 # See all possible arguments in src/transformers/training_args.py
@@ -673,7 +675,6 @@ def prepare_features(examples):
                 features['rank'] = [[[x]] * 2 for x in examples['rank']]
     
     return features
-    prepare_features(examples)
 
 if training_args.do_train:
     train_dataset = datasets["train"].map(
@@ -840,6 +841,7 @@ if training_args.do_train:
     
     # self,trial=trainer,None
     train_result = trainer.train(model_path=model_path)
+    # train_result=TrainOutput(self.state.global_step, self._total_loss_scalar / self.state.global_step, metrics)
     trainer.save_model()  # Saves the tokenizer too for easy upload
 
     output_train_file = os.path.join(training_args.output_dir, "train_results.txt")

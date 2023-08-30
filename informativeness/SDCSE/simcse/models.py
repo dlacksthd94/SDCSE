@@ -302,23 +302,32 @@ def cl_forward(cls,
         #     z3 = torch.cat(z3_list, 0)
 
         # Dummy vectors for allgather
+        # z1_list = [torch.zeros_like(z1) for _ in range(dist.get_world_size())]
+        # z2_list = [torch.zeros_like(z2) for _ in range(dist.get_world_size())]
         dict_z_list = {}
         for i in range(num_sent):
             dict_z_list[f'z{i + 1}_list'] = [torch.zeros_like(dict_z[f'z{i + 1}']) for _ in range(dist.get_world_size())]
         
         # Allgather
+        # dist.all_gather(tensor_list=z1_list, tensor=z1.contiguous())
+        # dist.all_gather(tensor_list=z2_list, tensor=z2.contiguous())
         for i in range(num_sent):
             dist.all_gather(tensor_list=dict_z_list[f'z{i + 1}_list'], tensor=dict_z[f'z{i + 1}'].contiguous())
         
         # Since allgather results do not have gradients, we replace the
         # current process's corresponding embeddings with original tensors
+        # z1_list[dist.get_rank()] = z1
+        # z2_list[dist.get_rank()] = z2
         for i in range(num_sent):
             dict_z_list[f'z{i + 1}_list'][dist.get_rank()] = dict_z[f'z{i + 1}']
 
         # Get full batch embeddings: (bs x N, hidden)
+        # z1 = torch.cat(z1_list, 0)
+        # z2 = torch.cat(z2_list, 0)
         for i in range(num_sent):
             dict_z[f'z{i + 1}'] = torch.cat(dict_z_list[f'z{i + 1}_list'], 0)
         
+    # cos_sim = cls.sim(z1.unsqueeze(1), z2.unsqueeze(0))
     cos_sim = cls.sim(dict_z['z1'].unsqueeze(1), dict_z['z2'].unsqueeze(0))
     # # Hard negative
     # if num_sent >= 3:

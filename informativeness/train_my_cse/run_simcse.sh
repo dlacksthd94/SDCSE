@@ -1,5 +1,7 @@
 #!/bin/bash
 
+start=`date`
+
 cd ../SimCSE
 
 # In this example, we show how to train SimCSE using multiple GPU cards and PyTorch's distributed data parallel on supervised NLI dataset.
@@ -33,12 +35,12 @@ declare -A dict_metric=(
 for BATCH_SIZE in 64; do
     for LR in 3e-5; do
         for EPOCH in 1; do
-            for SEED in 0 1 2 3 4; do
+            for SEED in 42; do
                 for MAX_LEN in 32; do
                     for POOLER in wp; do
                         for METRIC in stsb; do
-                            taskset -c 120-127 \
-                            python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
+                                CUDA_VISIBLE_DEVICES=1 \
+                                python train.py \
                                 --model_name_or_path bert-base-uncased \
                                 --train_file data/wiki1m_for_simcse.txt \
                                 --output_dir result/my-unsup-simcse-bert-base-uncased_${BATCH_SIZE}_${LR}_${EPOCH}_${SEED}_${MAX_LEN}_${POOLER}_${METRIC} \
@@ -65,3 +67,10 @@ for BATCH_SIZE in 64; do
         done
     done
 done
+
+# taskset -c 120-127 \
+# python -m torch.distributed.launch --nproc_per_node $NUM_GPU --master_port $PORT_ID train.py \
+
+end=`date`
+echo $start
+echo $end

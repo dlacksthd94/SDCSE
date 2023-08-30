@@ -12,11 +12,11 @@ model_name = 'princeton-nlp/unsup-simcse-bert-base-uncased'
 # model_name = 'princeton-nlp/unsup-simcse-bert-large-uncased'
 # model_name = 'princeton-nlp/unsup-simcse-roberta-base'
 # model_name = 'princeton-nlp/unsup-simcse-roberta-large'
-model_name = 'bert-base-uncased'
-model_name = os.path.join(os.getcwd(), 'result', 'mask0/')
-model_name = os.path.join(os.getcwd(), 'result', 'mask0_cls0/')
-model_name = os.path.join(os.getcwd(), 'result', 'mask0_cls0_sep0/')
-model_name = os.path.join(os.getcwd(), 'result', 'mask0_sep0/')
+# model_name = 'bert-base-uncased'
+# model_name = os.path.join(os.getcwd(), 'result', 'mask0/')
+# model_name = os.path.join(os.getcwd(), 'result', 'mask0_cls0/')
+# model_name = os.path.join(os.getcwd(), 'result', 'mask0_cls0_sep0/')
+# model_name = os.path.join(os.getcwd(), 'result', 'mask0_sep0/')
 # model_name = 'bert-large-uncased'
 
 model = AutoModel.from_pretrained(model_name)
@@ -78,6 +78,28 @@ list_sentence = [
     '<pad>',
 ]
 
+list_sentence = [
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework, with only standard dropout used as noise.',
+    'Unsupervised SimCSE simply takes an input sentence and predicts itself in a contrastive learning framework.',
+    'Unsupervised SimCSE takes an input sentence and predicts itself',
+    '----------',
+    'Chelsea have signed one of the biggest attacking talents on the planet.',
+    'Chelsea have signed one of the biggest attacking talents.',
+    'Chelsea have signed an attacking talent.',
+    '----------',
+    'Walking through the tranquil garden brought me a sense of peace and serenity.',
+    'Walking through the garden brought me peace and serenity.',
+    'Walking brought me peace and serenity.',
+    '----------',
+    'Rapid advancements in technology are shaping the way we communicate, work, and interact with the world around us, revolutionizing various aspects of our daily lives.',
+    'Advancements in technology are shaping the way we communicate, work, and interact with the world, revolutionizing our daily lives.',
+    'Advancements in technology are shaping the way we communicate, work, and interact with the world.',
+    '----------',
+    'The old cottage nestled in the valley was rumored to be haunted, adding an air of mystery to the surrounding woods.',
+    'The old cottage was rumored to be haunted, adding an air of mystery to the surrounding woods.',
+    'The old cottage was rumored to be haunted, adding an air of mystery',
+]
+
 sent = '[MASK]'
 for sent in list_sentence:
     if sent != '----------':
@@ -87,7 +109,7 @@ for sent in list_sentence:
         # cos_sim.mean()
         norm_wop = output.last_hidden_state[:, 0, :].squeeze().norm().item()
         norm_wp = output.pooler_output.squeeze().norm().item()
-        norm_wop, norm_wp
+        round(norm_wop, 2), round(norm_wp, 2)
     else:
         '----------'
 

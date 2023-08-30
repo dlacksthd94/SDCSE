@@ -116,7 +116,8 @@ def main():
                     cache_dir=args.cache_dir,
                     revision=args.model_revision,
                     use_auth_token=True if args.use_auth_token else None,
-                    model_args=args                  
+                    model_args=args,
+                    data_args=None,
                 )
         elif 'bert' in args.model_name_or_path:
             model = BertForCL.from_pretrained(
@@ -126,7 +127,8 @@ def main():
                     cache_dir=args.cache_dir,
                     revision=args.model_revision,
                     use_auth_token=True if args.use_auth_token else None,
-                    model_args=args
+                    model_args=args,
+                    data_args=None,
                 )
     else:
         model = AutoModel.from_pretrained(args.model_name_or_path)

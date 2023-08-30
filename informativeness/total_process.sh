@@ -22,7 +22,9 @@ cd DiffCSE
     pip install -r requirements.txt
     pip install dill==0.2.8.2
 cd ..
+#####
 ##### In order to prevent torch.distributed parallelism error, you have to manually edit 514~518th lines in diffcse/traners.py by changing 'model.~' -> 'model.module.~'
+#####
 
 # PromCSE
 git clone https://github.com/YJiangcm/PromCSE.git
@@ -34,6 +36,26 @@ git clone https://github.com/uds-lsv/MCSE.git
 git clone https://github.com/caskcsg/sentemb.git
 mv sentemb/* .
 rm -rf sentemb
+
+# InforMin-CL
+git clone https://github.com/ShaobinChen-AH/InforMin-CL.git
+
+# RankCSE
+git clone https://github.com/perceptiveshawty/RankCSE.git
+
+# PeerCL
+git clone https://github.com/qiyuw/PeerCL.git
+
+# MixCSE
+git clone https://github.com/BDBC-KG-NLP/MixCSE_AAAI2022.git
+mv MixCSE_AAAI2022 MixCSE
+#####
+##### In order to run train.py normally, toggle line comment on/off in line 350, 351, 353.
+#####
+
+# SCD
+git clone https://github.com/SAP-samples/acl2022-self-contrastive-decorrelation.git
+mv acl2022-self-contrastive-decorrelation SCD
 
 ########## download dataset ##########
 # SimCSE
@@ -123,6 +145,62 @@ cd gsInfoNCE
     cd ../../..
 cd ..
 
-########## train with random seeds ##########
-# SimCSE
+# InforMin-CL
+cd InforMin-CL
+    cd data
+        bash download_wiki.sh
+    cd ..
+    unzip SentEval
+    cd SentEval/data/downstream/
+        bash download_dataset.sh
+    cd ../../..
+cd ..
 
+# RankCSE
+cd RankCSE
+    mkdir data
+    cd data
+        cp ../../SimCSE/data/download_wiki.sh .
+        bash download_wiki.sh
+    cd ..
+    cd SentEval/data/downstream/
+        bash download_dataset.sh
+    cd ../../..
+    mkdir result
+cd ..
+
+# PeerCL
+cd PeerCL
+    cd data
+        bash download_wiki.sh
+    cd ..
+    mkdir -p SentEval/data/downstream/
+    mv SentEval/download_dataset.sh SentEval/data/downstream/
+    cd SentEval/data/downstream/
+        bash download_dataset.sh
+    cd ../../..
+cd ..
+
+# MixCSE
+cd MixCSE
+    mkdir -p data/text
+    cd data
+        cp ../../SimCSE/data/download_wiki.sh .
+        bash download_wiki.sh
+    cd ..
+    cp -r ../SimCSE/SentEval .
+    cd SentEval/data/downstream/
+        bash download_dataset.sh
+    cd ../../..
+    mkdir result
+cd ..
+
+# SCD
+cd SCD
+    cd data
+        bash download_wiki.sh
+    cd ..
+    cd SentEval/data/downstream/
+        bash download_dataset.sh
+    cd ../../..
+cd ..
