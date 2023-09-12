@@ -1,0 +1,22 @@
+{
+    "simcse": {
+        "bert": {
+            "base": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-bert-base-uncased_128_3e-5_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0/",
+            "large": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-bert-large-uncased_128_1e-5_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0/"
+        },
+        "roberta": {
+            "base": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-roberta-base_128_1e-5_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0/",
+            "large": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-roberta-large_128_3e-5_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0/"
+        }
+    },
+    "icse": {
+        "bert": {
+            "base": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-bert-base-uncased_128_3e-5_1_0_32_1e-0_dropout_1_2_margin_wp_stsb_1e-1/",
+            "large": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-bert-large-uncased_128_1e-5_1_0_32_1e-0_dropout_1_2_margin_wp_stsb_1e-1/"
+        },
+        "roberta": {
+            "base": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-roberta-base_128_1e-5_1_0_32_1e-0_dropout_1_2_margin_wp_stsb_1e-1/",
+            "large": "/data1/chansonglim/backup_eval_dropout_sim0_nocls/my-unsup-sdcse-roberta-large_128_3e-5_1_0_32_1e-0_dropout_1_1_margin_wp_stsb_1e-1/"
+        }
+    }
+}

@@ -1,0 +1,45 @@
+{
+    "bert": {
+        "bert": {
+            "base": "bert-base-uncased",
+            "large": "bert-large-uncased"
+        },
+        "roberta": {
+            "base": "roberta-base",
+            "large": "roberta-large"
+        }
+    },
+    "simcse": {
+        "bert": {
+            "base": "princeton-nlp/unsup-simcse-bert-base-uncased",
+            "large": "princeton-nlp/unsup-simcse-bert-large-uncased"
+        },
+        "roberta": {
+            "base": "princeton-nlp/unsup-simcse-roberta-base",
+            "large": "princeton-nlp/unsup-simcse-roberta-large"
+        }
+    },
+    "diffcse": {
+        "bert": {
+            "base": "voidism/diffcse-bert-base-uncased-sts",
+            "large": "voidism/diffcse-bert-base-uncased-trans"
+        },
+        "roberta": {
+            "base": "voidism/diffcse-roberta-base-sts",
+            "large": "voidism/diffcse-roberta-base-trans"
+        }
+    },
+    "promcse": {
+        "bert": {
+            "base": "YuxinJiang/unsup-promcse-bert-base-uncased"
+        }
+    },
+    "scd": {
+        "bert": {
+            "base": "sap-ai-research/BERT-base-uncased-SCD-ACL2022"
+        },
+        "roberta": {
+            "base": "sap-ai-research/RoBERTa-base-SCD-ACL2022"
+        }
+    }
+}
