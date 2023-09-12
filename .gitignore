@@ -1,4 +1,4 @@
-*.pickle
+# *.pickle
 __pycache__/
 .ipynb_checkpoints/
 *.out
@@ -6,12 +6,10 @@ __pycache__/
 *.bin
 # *.json
 # *.csv
-scidocs
 
 # folders
-result/
+informativeness/*/result/
 data/
-model/
 SentEval/data/
 
 # encoders
