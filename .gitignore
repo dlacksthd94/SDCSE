@@ -5,7 +5,7 @@ __pycache__/
 *.png
 *.bin
 *.json
-*.csv
+# *.csv
 scidocs
 
 # folders
@@ -21,5 +21,5 @@ SentEval/data/
 MCSE
 InfoCSE
 gsInfoNCE
-ESimCSE
+ESimC
 SCD

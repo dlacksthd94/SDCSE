@@ -1,0 +1,10 @@
+encoder,,simcse,simcse,simcse,simcse,icse,icse,icse,icse
+plm,,bert,bert,roberta,roberta,bert,bert,roberta,roberta
+size,,base,large,base,large,base,large,base,large
+init_dropout,,0,0,0,0,0,0,0,0
+perturb_num,perturb_dropout,,,,,,,,
+1,0.1,0.64,0.63,0.01,-0.08,1.0,1.0,-0.24,0.89
+1,0.2,0.83,0.84,0.1,-0.15,1.0,1.0,0.17,0.98
+1,0.3,0.91,0.93,0.32,-0.25,1.0,1.0,0.84,0.99
+1,0.4,0.94,0.9,0.57,-0.29,1.0,1.0,1.0,0.99
+1,0.5,0.95,0.46,0.66,0.07,1.0,0.96,1.0,1.0

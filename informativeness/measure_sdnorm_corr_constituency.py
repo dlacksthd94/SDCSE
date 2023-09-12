@@ -15,7 +15,7 @@ import sys
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 PATH_DATA = os.path.join(os.getcwd(), 'data', 'backup_100000', 'wiki1m_tree_cst_lg_large_subsentence.pickle')
-SAMPLE_SIZE = 1000
+SAMPLE_SIZE = 10000
 with open(PATH_DATA, 'rb') as f:
     list_text = pickle.load(f)
 list_text = np.random.choice(list_text, size=SAMPLE_SIZE, replace=False)
