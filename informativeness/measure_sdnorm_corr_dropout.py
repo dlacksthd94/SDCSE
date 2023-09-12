@@ -10,125 +10,110 @@ import pandas as pd
 from torch.nn.parallel import DataParallel
 import json
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
+
 PATH_DATA = os.path.join(os.getcwd(), 'data', 'wiki1m_for_simcse.txt')
+SAMPLE_SIZE = 1000
 with open(PATH_DATA, 'r') as f:
     list_text = f.readlines()
-list_text = np.random.choice(list_text, size=100000, replace=False)
+list_text = np.random.choice(list_text, size=SAMPLE_SIZE, replace=False)
 len(list_text)
 
-# FILE_NAME = 'model_meta_data_open.json'
-FILE_NAME = 'model_meta_data_my.json'
-with open(FILE_NAME, 'r') as f:
-    dict_model = json.load(f)
-    list_encoder_to_remove = ['diffcse', 'promcse', 'scd']
-    # list_encoder_to_remove = ['promcse', 'scd']
-    for encoder in list_encoder_to_remove:
-        dict_model.pop(encoder) 
+dict_meta_data = {
+    'BERT': 'bert-base-uncased',
+    'SimCSE': 'SDCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-sdcse-bert-base-uncased_64_3e-5_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0_0e-0_0e-0_0',
+    'SimCSE+': 'SDCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-sdcse-bert-base-uncased_64_3e-5_1_0_32_1e-2_dropout_1_2_margin_wp_stsb_1e-1_0e-0_0e-0_0',
+    'DiffCSE': 'DiffCSE/result/backup_eval_dropout_sim0_nocls_sts_1gpu/my-unsup-diffcse-bert-base-uncased_64_7e-6_2_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0_5e-3_3e-1_0',
+    'DiffCSE+': 'DiffCSE/result/backup_eval_dropout_sim0_nocls_sts_1gpu/my-unsup-diffcse-bert-base-uncased_64_7e-6_2_0_32_1e-2_dropout_1_2_margin_wp_stsb_1e-2_5e-3_3e-1_0',
+    'PromCSE': 'PromCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-promcse-bert-base-uncased_256_3e-2_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0_0e-0_0e-0_16',
+    # 'PromCSE+': 'PromCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-promcse-bert-base-uncased_256_3e-2_1_0_32_1e-1_dropout_1_2_margin_wp_stsb_1e-1_0e-0_0e-0_16',
+    'PromCSE+': 'PromCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-promcse-bert-base-uncased_256_3e-2_1_0_32_5e-0_dropout_1_2_margin_wp_stsb_1e-1_0e-0_0e-0_16',
+    'MixCSE': 'MixCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-mixcse-bert-base-uncased_64_3e-5_1_0_32_0e-0_none_0_0_mse_wp_stsb_0e-0_0e-0_0e-0_0',
+    'MixCSE+': 'MixCSE/result/backup_eval_dropout_sim0_nocls_1gpu/my-unsup-mixcse-bert-base-uncased_64_3e-5_1_0_32_1e-2_dropout_1_2_margin_wp_stsb_1e-1_0e-0_0e-0_0',
+}
 
-INIT_DROPOUT = 0
+INIT_DROPOUT = 0.0
+DROPOUT_STEP = 0.2
+INFORMATIVE_PAIR_SIZE = 2
 BATCH_SIZE = 64
 DEVICE = 'cuda'
 MAX_LEN = 32
-SENTENCE_PAIR_SIZE = 6
-assert SENTENCE_PAIR_SIZE <= 10
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3'
 
-list_perturb_num = range(1, 2)
-list_perturb_step = np.arange(0.1, round(0.1 * SENTENCE_PAIR_SIZE, 1), 0.1).round(2)
-list_product = list(product(list_perturb_num, list_perturb_step))
-# list_init_dropout = [0, 0.1]
-list_init_dropout = [0]
+dict_meta_data
 
-columns = pd.MultiIndex.from_product([dict_model.keys(), list(dict_model.values())[0].keys(), list(list(dict_model.values())[0].values())[0].keys(), list_init_dropout], names=['encoder', 'plm', 'size', 'init_dropout'])
-index = pd.MultiIndex.from_tuples(list_product, names=['perturb_num', 'perturb_dropout'])
-df = pd.DataFrame(index=index, columns=columns)
-# encoder, plm, size, perturb_num = 'simcse', 'roberta', 'large', 1
-for encoder in tqdm(dict_model):
-    for plm in tqdm(dict_model[encoder], leave=False):
-        for size in tqdm(dict_model[encoder][plm], leave=False):
-            model_path = dict_model[encoder][plm][size]
-            for perturb_num in list_perturb_num:
-                model = AutoModel.from_pretrained(model_path)
-                tokenizer = AutoTokenizer.from_pretrained(model_path)
-                
-                class CustomDropout(nn.Module):
-                    def __init__(self, dict_dropout):
-                        super(CustomDropout, self).__init__()
-                        self.dict_dropout = dict_dropout
-                        self.dropout = nn.Dropout(0.1)
-                        for i in range(len(dict_dropout)):
-                            setattr(self, f'dropout_{i}', nn.Dropout(dict_dropout[f'dropout_{i}']))
-                        
-                    def forward(self, x):
-                        out = x.clone()
-                        for i in range(len(self.dict_dropout)):
-                            dropout_i = getattr(self, f'dropout_{i}')
-                            # out[i::len(self.dict_dropout), :, :] = dropout_i(x[i::len(self.dict_dropout), :, :])
-                            # p = dropout_i.p #if i else 0
-                            out[i::SENTENCE_PAIR_SIZE, 1:, :] = dropout_i(x[i::SENTENCE_PAIR_SIZE, 1:, :]) #* (1-p) / 0.9
-                        out[:, 0, :] = self.dropout_0(out[:, 0, :])
-                        return out
-                
-                # BERT 모델에서 드롭아웃 레이어 찾기
-                dropout_layer_names = []
-                for name, module in model.named_modules():
-                    if isinstance(module, nn.Dropout) or isinstance(module, CustomDropout):
-                        dropout_layer_names.append(name)
-                # dropout_layer_names
+df = pd.DataFrame(index=['corr'], columns=dict_meta_data.keys())
+for model_name in dict_meta_data.keys():
+    model_path = dict_meta_data[model_name]
+    model = AutoModel.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-                # 드롭아웃 레이어 변경
-                dict_dropout = {f'dropout_{i}': round(INIT_DROPOUT + 0.1 * i, 4) for i in range(SENTENCE_PAIR_SIZE)}
-                custom_dropout = CustomDropout(dict_dropout)
-                for name in dropout_layer_names:
-                    if name.startswith('embeddings'):
-                        model.embeddings.dropout = custom_dropout
-                    elif name.startswith('encoder'):
-                        n = int(name.split('.')[2])
-                        model.encoder.layer[n].attention.self.dropout = custom_dropout
-                        model.encoder.layer[n].attention.output.dropout = custom_dropout
-                        model.encoder.layer[n].output.dropout = custom_dropout
-                # model
-                
-                if torch.cuda.device_count() > 1:
-                    model = DataParallel(model)
-                    batch_size = BATCH_SIZE * torch.cuda.device_count()
-                else:
-                    batch_size = int(BATCH_SIZE // SENTENCE_PAIR_SIZE)
-                _ = model.to(DEVICE)
-                
-                list_batch = [list_text[i:i+batch_size] for i in range(0, len(list_text), batch_size)]
-                len(list_batch)
+    class CustomDropout(nn.Module):
+        def __init__(self, dict_dropout):
+            super(CustomDropout, self).__init__()
+            self.dict_dropout = dict_dropout
+            self.dropout = nn.Dropout(0.1)
+            for i in range(len(dict_dropout)):
+                setattr(self, f'dropout_{i}', nn.Dropout(dict_dropout[f'dropout_{i}']))
+            
+        def forward(self, x):
+            out = x.clone()
+            for i in range(len(self.dict_dropout)):
+                dropout_i = getattr(self, f'dropout_{i}')
+                # out[i::len(self.dict_dropout), :, :] = dropout_i(x[i::len(self.dict_dropout), :, :])
+                # p = dropout_i.p #if i else 0
+                out[i::INFORMATIVE_PAIR_SIZE, 1:, :] = dropout_i(x[i::INFORMATIVE_PAIR_SIZE, 1:, :]) #* (1-p) / 0.9
+            out[:, 0, :] = self.dropout(out[:, 0, :])
+            return out
 
-                def func(batch):
-                    batch_augmented = list(chain.from_iterable(zip(*[batch] * (SENTENCE_PAIR_SIZE))))
-                    tokenized_input = tokenizer(batch_augmented, padding=True, truncation=True, max_length=MAX_LEN, return_tensors="pt")
-                    tokenized_input = {k: v.to(DEVICE) for k, v in tokenized_input.items()}
-                    output = model(**tokenized_input, return_dict=True)
-                    output = output.last_hidden_state.cpu().detach()
-                    return output
+    # BERT 모델에서 드롭아웃 레이어 찾기
+    dropout_layer_names = []
+    for name, module in model.named_modules():
+        if isinstance(module, nn.Dropout) or isinstance(module, CustomDropout):
+            dropout_layer_names.append(name)
+    # dropout_layer_names
 
-                list_corr = [[[] for _ in range(len(list_init_dropout))] for i in range(SENTENCE_PAIR_SIZE - 1)]
-                for batch in tqdm(list_batch, leave=False):
-                    output = func(batch)
-                    norm = output[:, 0].norm(dim=-1)
-                    norm_reshape = norm.reshape(-1, SENTENCE_PAIR_SIZE)
-                    for i in range(len(list_init_dropout)): # type of intact dropout ratio
-                        for j in range(1, SENTENCE_PAIR_SIZE):
-                            if i == j:
-                                list_corr[j - 1][i].append(np.nan)
-                                continue
-                            norm_selected = norm_reshape[:, [i, j]]
-                            x = torch.argsort(norm_selected, descending=True)
-                            y = torch.Tensor([range(2) for i in range(len(x))])
-                            corr_temp = torch.mean(1 - (x - y).pow(2).sum(dim=1).mul(6).div((perturb_num + 1) * ((perturb_num + 1) ** 2 - 1)))
-                            list_corr[j - 1][i].append(corr_temp.item())
-                    # for i in range(1, SENTENCE_PAIR_SIZE):
-                    #     norm_selected = norm_reshape[:, [0, i]]
-                    #     x = torch.argsort(norm_selected, descending=True)
-                    #     y = torch.Tensor([range(2) for i in range(batch_size)])
-                    #     corr_temp = torch.mean(1 - (x - y).pow(2).sum(dim=1).mul(6).div((perturb_num + 1) * ((perturb_num + 1) ** 2 - 1)))
-                    #     list_corr[i - 1].append(corr_temp.item())
-                list_corr_mean = np.array(list_corr).mean(axis=2)
-                df.loc[perturb_num, (encoder, plm, size)] = list_corr_mean
+    # 드롭아웃 레이어 변경
+    dict_dropout = {f'dropout_{i}': round(INIT_DROPOUT + DROPOUT_STEP * i, 1) for i in range(INFORMATIVE_PAIR_SIZE)}
+    custom_dropout = CustomDropout(dict_dropout)
+    for name in dropout_layer_names:
+        if name.startswith('embeddings'):
+            model.embeddings.dropout = custom_dropout
+        elif name.startswith('encoder'):
+            n = int(name.split('.')[2])
+            model.encoder.layer[n].attention.self.dropout = custom_dropout
+            model.encoder.layer[n].attention.output.dropout = custom_dropout
+            model.encoder.layer[n].output.dropout = custom_dropout
+    # model
+
+    if torch.cuda.device_count() > 1:
+        model = DataParallel(model)
+        batch_size = BATCH_SIZE * torch.cuda.device_count()
+    else:
+        batch_size = int(BATCH_SIZE // INFORMATIVE_PAIR_SIZE)
+    _ = model.to(DEVICE)
+
+    list_batch = [list_text[i:i+batch_size] for i in range(0, len(list_text), batch_size)]
+
+    def func(batch):
+        batch_augmented = list(chain.from_iterable(zip(*[batch] * (INFORMATIVE_PAIR_SIZE))))
+        tokenized_input = tokenizer(batch_augmented, padding=True, truncation=True, max_length=MAX_LEN, return_tensors="pt")
+        tokenized_input = {k: v.to(DEVICE) for k, v in tokenized_input.items()}
+        output = model(**tokenized_input, return_dict=True)
+        output = output.last_hidden_state.cpu().detach()
+        return output
+
+    list_corr = []
+    for batch in tqdm(list_batch, leave=False):
+        output = func(batch)
+        norm = output[:, 0].norm(dim=-1)
+        norm_reshape = norm.reshape(-1, INFORMATIVE_PAIR_SIZE)
+        list_corr.append(norm_reshape)
+    norm_total = torch.cat(list_corr)
+    x = torch.argsort(norm_total, descending=True)
+    y = torch.Tensor([range(INFORMATIVE_PAIR_SIZE) for i in range(len(x))])
+    corr_temp = torch.mean(1 - (x - y).pow(2).sum(dim=1).mul(6).div((INFORMATIVE_PAIR_SIZE + 1) * ((INFORMATIVE_PAIR_SIZE + 1) ** 2 - 1)))
+    df.loc['corr', model_name] = corr_temp.item()
+
 df = df.round(2)
-df.to_csv(f"../sdnorm_dropout_{FILE_NAME.split('.')[0].split('_')[-1]}.csv")
+df
+# df.to_csv(f"../sdnorm_dropout_{FILE_NAME.split('.')[0].split('_')[-1]}.csv")

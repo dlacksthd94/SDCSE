@@ -111,7 +111,7 @@ dict_meta = {
         'list_loss': ['mse', 'margin'],
         'list_pooler': ['wp'],
         'list_metric': ['stsb'],
-        'list_margin': ['0e-0', '1e-1'],
+        'list_margin': ['0e-0', '1e-1', '1e-2'],
         'list_lambda_diffcse': ['0e-0'],
         'list_mask_ratio': ['0e-0'],
         'list_prom_len': [0],
@@ -147,6 +147,7 @@ def result_dev(*groupby):
                                                                             # plm, bs, lr, epoch, seed, max_len, lambda_sdcse, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_diffcse, mask_ratio, prom_len = 'bert_base', 128, '3e-5', 1, 0, 32, '1e-0', 'dropout', 1, 2, 'margin', 'wp', 'stsb', '1e-1', '0e-0', '0e-0', 0 # SDCSE
                                                                             # plm, bs, lr, epoch, seed, max_len, lambda_sdcse, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_diffcse, mask_ratio, prom_len = 'bert_base', 64, '7e-6', 2, 0, 32, '0e-0', 'none', 0, 0, 'mse', 'wp', 'stsb', '0e-0', '5e-3', '3e-1', 0 # DiffCSE
                                                                             # plm, bs, lr, epoch, seed, max_len, lambda_sdcse, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_diffcse, mask_ratio, prom_len = 'bert_base', 256, '3e-2', 1, 0, 32, '0e-0', 'none', 0, 0, 'mse', 'wp', 'stsb', '0e-0', '0e-0', '0e-0', 16 # PromCSE
+                                                                            # plm, bs, lr, epoch, seed, max_len, lambda_sdcse, pt_type, pt_num, pt_step, loss, pooler, metric, margin, lambda_diffcse, mask_ratio, prom_len = 'bert_base', 64, '3e-5', 1, 0, 32, '0e-0', 'none', 0, 0, 'mse', 'wp', 'stsb', '0e-0', '0e-0', '0e-0', 0 # MixCSE
                                                                             result_path = os.path.join(root_path, f'my-unsup-{ENCODER.lower()}-{dict_plm[plm]}_{bs}_{lr}_{epoch}_{seed}_{max_len}_{lambda_sdcse}_{pt_type}_{pt_num}_{pt_step}_{loss}_{pooler}_{metric}_{margin}_{lambda_diffcse}_{mask_ratio}_{prom_len}', 'eval_results.txt')
                                                                             if not os.path.exists(result_path):
                                                                                 root_path_another = os.path.join('/data1/csl/', ENCODER, RESULT_FOLDER)

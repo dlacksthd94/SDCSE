@@ -79,7 +79,7 @@ def vis_tree(doc):
 list2find = ['ROOT', 'nsubj', 'aux', 'dobj', '']
 list2remove = ['dative', 'prep', 'ccomp']
 
-with open(f'data/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
+with open(f'data/backup_100000/{DATASET}_tree_cst_{PIPELINE[12:]}{PARSER[11:]}.pickle', 'rb') as f:
     list_tree = pickle.load(f)
 
 doc = list_tree[100]
