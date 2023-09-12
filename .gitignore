@@ -15,10 +15,11 @@ model/
 SentEval/data/
 
 # encoders
-SimCSE
+# SimCSE
 # DiffCSE
-PromCSE
+# PromCSE
 MCSE
 InfoCSE
 gsInfoNCE
 ESimCSE
+SCD
